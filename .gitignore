@@ -1,0 +1,5 @@
+.idea/
+.directory
+venv/
+__pycache__/
+chattyboi.iml
