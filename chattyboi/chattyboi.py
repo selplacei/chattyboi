@@ -2,11 +2,15 @@
 import asyncio
 import hashlib
 import importlib.util
+import itertools
 import pathlib
+import sys
+from typing import List, Tuple
 
 import qasync
 from PySide2.QtCore import Signal, QObject
 from PySide2.QtWidgets import QApplication
+import toml
 
 import main
 import config
@@ -19,7 +23,7 @@ def run_default():
 		profile = profiles.Profile(path)
 		main.state.profile = profile
 		profile.initialize()
-		main.state.extension_helper.find_and_load_all()
+		main.state.extension_helper.load_all()
 
 	profile_dialog = gui.ProfileSelectDialog()
 	profile_dialog.accepted.connect(lambda: profile_select_callback(profile_dialog.get_selected_profile_path()))
@@ -27,10 +31,6 @@ def run_default():
 	profile_dialog.show()
 
 	return asyncio.get_event_loop().run_forever()
-
-
-def load_extension(path, to_state, module_name=None):
-	pass
 
 
 class ApplicationState(QObject):
@@ -45,6 +45,7 @@ class ApplicationState(QObject):
 		* active chat streams;
 	The state of the currently running application can be retrieved via `main.state`.
 	"""
+
 	@classmethod
 	def default(cls):
 		return cls(
@@ -84,6 +85,7 @@ class Extension:
 		* associated module: contained in the `module` attribute.
 		* public attributes of the module: accessed with `__get__`, i.e. as in a dict (extension['key']).
 	"""
+
 	def __init__(self, metadata, module):
 		"""
 		`metadata` should have the following keys:
@@ -101,7 +103,7 @@ class ExtensionHelper:
 	"""
 	Helper class for managing extensions associated with a specific state.
 	To retrieve the list of needed extensions, the state's profile is used.
-	When extensions are loaded, the `extensions` attribute of the state is updated by this object.
+	When extensions are loaded, the `extensions` attribute of the state is updated automatically.
 
 	The responsibilities of this class are as follows:
 		* finding extension packages from a profile's properties;
@@ -111,10 +113,62 @@ class ExtensionHelper:
 		* initializing associated Extension objects;
 		* updating the state's extension list.
 	"""
+
+	@staticmethod
+	def get_metadata(fp: pathlib.Path, set_defaults=True):
+		metadata = {
+			'author': 'Unknown',
+			'version': '<unknown>',
+			'license': 'No license',
+			'summary': 'No summary provided.',
+			'description': 'No description provided.',
+			'requires': [],
+			'implements': []
+		} if set_defaults else {}
+		metadata.update(toml.load(fp))
+		if not ({'name', 'source'} <= set(metadata)):
+			raise ValueError(f'Extension metadata at {fp} does not provide a name and a source')
+		return metadata
+
+	@staticmethod
+	def load_order(extensions: List[Tuple[pathlib.Path, dict]]) -> List[pathlib.Path]:
+		# TODO: load order
+		order = []
+		all_extensions = {
+			md['source']: {'path': path, 'requires': md['requires'], 'implements': md['implements']}
+			for path, md in extensions
+		}
+		dependencies = {
+
+		}
+		return order
+
 	def __init__(self, state):
 		self.state = state
 
-	def extension_paths(self):
+	def paths(self):
 		for path in self.state.profile.properties['extensions']:
 			yield pathlib.Path(path)
 
+	def load(self, path, metadata, module_name=None):
+		module_name = module_name or f'extension_{hashlib.md5(bytes(metadata["source"], "utf-8")).hexdigest()}'
+		spec = importlib.util.spec_from_file_location(module_name, path / '__init__.py')
+		module = importlib.util.module_from_spec(spec)
+		sys.modules[module_name] = module
+		extension = Extension(metadata, module)
+		self.state.extensions.append(extension)
+		spec.loader.exec_module(module)
+
+	def load_all(self):
+		paths = self.paths()
+		metadata = [self.get_metadata(fp) for fp in paths]
+		# Check for duplicate implementations
+		implementations = {md['source']: {md['source']} | set(md['implements']) for md in metadata}
+		for left, right in filter(lambda src: src[0] != src[1], itertools.product(implementations.keys(), repeat=2)):
+			if conflicts := implementations[left] & implementations[right]:
+				raise RuntimeError(
+					f'Duplicate extension implementations found:'
+					f'Both [{left}] and [{right}] implement {conflicts}'
+				)
+		for path, metadata in self.load_order(zip(paths, metadata)):
+			self.load(path, metadata)
