@@ -132,15 +132,29 @@ class ExtensionHelper:
 
 	@staticmethod
 	def load_order(extensions: List[Tuple[pathlib.Path, dict]]) -> List[pathlib.Path]:
-		# TODO: load order
+		"""
+		Use Kahn's topological sort algorithm to find an extension load order that satisfies all dependencies.
+		This function assumes no duplicate implementations. A ValueError will be raised if there is a dependency cycle.
+		"""
 		order = []
-		all_extensions = {
-			md['source']: {'path': path, 'requires': md['requires'], 'implements': md['implements']}
-			for path, md in extensions
-		}
-		dependencies = {
-
-		}
+		graph = {path: [] for path, _ in extensions}
+		for path_u, info_u in extensions:
+			for path_v, info_v in filter(lambda e: e[0] != path_u, extensions):
+				if any(req == info_v['source'] or req in info_v['implements'] for req in info_u['requires']):
+					graph[path_u].append(path_v)
+		queue = [u for u, v in graph.items() if len(v) == 0]
+		while queue:
+			n = queue.pop()
+			order.append(n)
+			for m in (node for node, edges in graph.items() if n in edges):
+				graph[m].remove(n)
+				if len(graph[m]) == 0:
+					queue.append(m)
+		if any(edges for node, edges in graph.items()):
+			raise ValueError(
+				f'Encountered a dependency cycle when finding the load order for extensions.'
+				f'Remaining values in graph:\n{graph}'
+			)
 		return order
 
 	def __init__(self, state):
