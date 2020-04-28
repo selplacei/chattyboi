@@ -25,7 +25,8 @@ def run_default():
 		profile.initialize()
 		main.state.extension_helper.load_all()
 
-	profile_dialog = gui.ProfileSelectDialog()
+	# TODO: get search paths from QSettings
+	profile_dialog = gui.ProfileSelectDialog(['./profiles'])
 	profile_dialog.accepted.connect(lambda: profile_select_callback(profile_dialog.get_selected_profile_path()))
 	profile_dialog.rejected.connect(QApplication.instance().quit)
 	profile_dialog.show()
