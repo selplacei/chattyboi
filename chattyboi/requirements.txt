@@ -1,0 +1,4 @@
+PySide2>=5.14.2
+qasync>=0.9.4
+shiboken2>=5.14.2
+toml>=0.10.0
