@@ -19,9 +19,13 @@ class Profile:
 	def __init__(self, path: pathlib.Path):
 		self.path = path
 		self.properties = None
-		self.database_connection = None
+		self.connection = None
+		self.database_path = self.path / self.DATABASE_FILENAME
 		self.extension_data_dir = pathlib.Path(self.path / self.EXTENSION_DATA_DIRECTORY)
 		self.load_properties()
+
+	def get_database_wrapper(self):
+		return DatabaseWrapper.cache.get(self.database_path) or DatabaseWrapper(self.database_path, self.connection)
 
 	def load_properties(self):
 		try:
@@ -36,7 +40,7 @@ class Profile:
 	def initialize(self):
 		if not self.extension_data_dir.is_dir():
 			self.extension_data_dir.mkdir(parents=True)
-		self.database_connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME))
+		self.connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME))
 
 	@property
 	def name(self):
@@ -44,5 +48,9 @@ class Profile:
 
 
 class DatabaseWrapper:
-	def __init__(self, connection):
+	cache = {}
+
+	def __init__(self, source: pathlib.Path, connection: sqlite3.Connection):
+		self.source = source
 		self.connection = connection
+		DatabaseWrapper.cache[source] = self

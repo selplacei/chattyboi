@@ -6,15 +6,14 @@ import collections
 import datetime
 import hashlib
 import importlib.util
-import itertools
 import pathlib
-import sys
-from typing import List, Tuple, Deque
+from typing import List, Tuple, Deque, Optional
 
-import qasync
+import itertools
+import sys
+import toml
 from PySide2.QtCore import Signal, QObject
 from PySide2.QtWidgets import QApplication
-import toml
 
 import config
 import gui
@@ -58,10 +57,9 @@ class ApplicationState(QObject):
 			properties={'system': config.system_settings, 'user': config.user_settings}
 		)
 
-	def __init__(self, properties, profile=None, extensions=None, chats=None, database_wrapper=None):
+	def __init__(self, properties, profile=None, extensions=None, chats=None):
 		super().__init__(None)
 		self._profile = profile
-		self.database = database_wrapper
 		self.properties = properties
 		self.extensions = extensions or []
 		self.extension_helper = ExtensionHelper(self)
@@ -75,9 +73,15 @@ class ApplicationState(QObject):
 	def profile(self, value):
 		if self._profile is None:
 			self._profile = value
-			self.database = profiles.DatabaseWrapper(self._profile.database_connection)
 		else:
 			raise AttributeError('The profile cannot be changed after it has been set.')
+
+	@property
+	def database(self):
+		return self.profile.get_database_wrapper()
+
+	def find_extension_by_module(self, module):
+		return next(ext for ext in self.extensions if ext.module is module)
 
 
 class Extension:
@@ -202,7 +206,7 @@ class User(QObject):
 
 
 class Message(QObject):
-	def __init__(self, source: Chat, author: User, content, timestamp=None):
+	def __init__(self, source: Optional[Chat], author: User, content, timestamp=None):
 		super().__init__(None)
 		self.source = source
 		self.author = author
