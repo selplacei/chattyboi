@@ -1,11 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
+from __future__ import annotations
+
 import asyncio
+import collections
+import datetime
 import hashlib
 import importlib.util
 import itertools
 import pathlib
 import sys
-from typing import List, Tuple
+from typing import List, Tuple, Deque
 
 import qasync
 from PySide2.QtCore import Signal, QObject
@@ -188,3 +192,30 @@ class ExtensionHelper:
 				)
 		for path, metadata in self.load_order(zip(paths, metadata)):
 			self.load(path, metadata)
+
+
+class User(QObject):
+	def __init__(self, database: profiles.DatabaseWrapper, id):
+		super().__init__(None)
+		self.database = database
+		self.id = id
+
+
+class Message(QObject):
+	def __init__(self, source: Chat, author: User, content, timestamp=None):
+		super().__init__(None)
+		self.source = source
+		self.author = author
+		self.content = content
+		self.timestamp = timestamp or datetime.datetime.now().timestamp()
+		if self.source:
+			self.source.messages.append(self)
+			self.source.messageReceived.emit(self)
+
+
+class Chat(QObject):
+	messageReceived = Signal(Message)
+
+	def __init__(self):
+		super().__init__(None)
+		self.messages: Deque[Message] = collections.deque()
