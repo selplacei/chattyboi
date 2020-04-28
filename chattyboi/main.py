@@ -5,9 +5,8 @@ import sys
 from PySide2.QtWidgets import QApplication
 import qasync
 
-import utils, config, profiles, gui, chattyboi, extapi
+import utils, state, config, profiles, gui, chattyboi, extapi
 
-state = None
 
 if __name__ == '__main__':
 	app = QApplication(sys.argv)
@@ -16,6 +15,5 @@ if __name__ == '__main__':
 	loop = qasync.QEventLoop(app)
 	asyncio.set_event_loop(loop)
 
-	state = chattyboi.ApplicationState.default()
 	with loop:
 		sys.exit(chattyboi.run_default())

@@ -12,18 +12,20 @@ from PySide2.QtCore import Signal, QObject
 from PySide2.QtWidgets import QApplication
 import toml
 
-import main
 import config
 import gui
 import profiles
+import state
 
 
 def run_default():
+	state.state = ApplicationState.default()
+
 	def profile_select_callback(path):
 		profile = profiles.Profile(path)
-		main.state.profile = profile
+		state.state.profile = profile
 		profile.initialize()
-		main.state.extension_helper.load_all()
+		state.state.extension_helper.load_all()
 
 	# TODO: get search paths from QSettings
 	profile_dialog = gui.ProfileSelectDialog(['./profiles'])
@@ -44,9 +46,8 @@ class ApplicationState(QObject):
 		* associated ExtensionHelper;
 		* associated DatabaseWrapper.
 		* active chat streams;
-	The state of the currently running application can be retrieved via `main.state`.
+	The state of the currently running application can be retrieved through the `state` module.
 	"""
-
 	@classmethod
 	def default(cls):
 		return cls(
