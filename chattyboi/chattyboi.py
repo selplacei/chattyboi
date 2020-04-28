@@ -153,7 +153,7 @@ class ExtensionHelper:
 		if any(edges for node, edges in graph.items()):
 			raise ValueError(
 				f'Encountered a dependency cycle when finding the load order for extensions.'
-				f'Remaining values in graph:\n{graph}'
+				f'Remaining values in the dependency graph:\n{graph}'
 			)
 		return order
 
