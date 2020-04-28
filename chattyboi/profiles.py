@@ -18,13 +18,34 @@ class Profile:
 
 	def __init__(self, path: pathlib.Path):
 		self.path = path
-		self.properties = None
-		self.connection = None
+		self.properties: dict = None
+		self.connection: sqlite3.Connection = None
 		self.database_path = self.path / self.DATABASE_FILENAME
 		self.extension_data_dir = pathlib.Path(self.path / self.EXTENSION_DATA_DIRECTORY)
 		self.load_properties()
 
+	def __enter__(self):
+		self.initialize()
+		return self
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		self.connection.commit()
+		self.connection.close()
+
+	def initialize(self):
+		if not self.extension_data_dir.is_dir():
+			self.extension_data_dir.mkdir(parents=True)
+		self.connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME))
+		self.connection.cursor().execute(
+			'CREATE TABLE IF NOT EXISTS user_info ('
+			'username TEXT NOT NULL, '
+			'created_on FLOAT, '
+			'extension_data TEXT'
+			')'
+		)
+
 	def get_database_wrapper(self):
+		from chattyboi import DatabaseWrapper
 		return DatabaseWrapper.cache.get(self.database_path) or DatabaseWrapper(self.database_path, self.connection)
 
 	def load_properties(self):
@@ -37,20 +58,6 @@ class Profile:
 	def save_properties(self):
 		json.dump(self.properties, (self.path / self.PROPERTIES_FILENAME).open('w'))
 
-	def initialize(self):
-		if not self.extension_data_dir.is_dir():
-			self.extension_data_dir.mkdir(parents=True)
-		self.connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME))
-
 	@property
 	def name(self):
 		return self.properties['name']
-
-
-class DatabaseWrapper:
-	cache = {}
-
-	def __init__(self, source: pathlib.Path, connection: sqlite3.Connection):
-		self.source = source
-		self.connection = connection
-		DatabaseWrapper.cache[source] = self

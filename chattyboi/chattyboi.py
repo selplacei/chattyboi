@@ -6,8 +6,10 @@ import collections
 import datetime
 import hashlib
 import importlib.util
+import json
 import pathlib
-from typing import List, Tuple, Deque, Optional
+import sqlite3
+from typing import List, Union, Tuple, Deque, Optional
 
 import itertools
 import sys
@@ -19,6 +21,7 @@ import config
 import gui
 import profiles
 import state
+import utils
 
 
 def run_default():
@@ -27,8 +30,8 @@ def run_default():
 	def profile_select_callback(path):
 		profile = profiles.Profile(path)
 		state.state.profile = profile
-		profile.initialize()
-		state.state.extension_helper.load_all()
+		with profile:
+			state.state.extension_helper.load_all()
 
 	# TODO: get search paths from QSettings
 	profile_dialog = gui.ProfileSelectDialog(['./profiles'])
@@ -95,7 +98,6 @@ class Extension:
 		* associated module: contained in the `module` attribute.
 		* public attributes of the module: accessed with `__get__`, i.e. as in a dict (extension['key']).
 	"""
-
 	def __init__(self, metadata, module):
 		"""
 		`metadata` should have the following keys:
@@ -123,7 +125,6 @@ class ExtensionHelper:
 		* initializing associated Extension objects;
 		* updating the state's extension list.
 	"""
-
 	@staticmethod
 	def get_metadata(fp: pathlib.Path, set_defaults=True):
 		metadata = {
@@ -136,9 +137,13 @@ class ExtensionHelper:
 			'implements': []
 		} if set_defaults else {}
 		metadata.update(toml.load(fp))
-		if not ({'name', 'source'} <= set(metadata)):
+		if not ({'name', 'source'} <= set(metadata.keys())):
 			raise ValueError(f'Extension metadata at {fp} does not provide a name and a source')
 		return metadata
+
+	@staticmethod
+	def get_hash(metadata):
+		return hashlib.md5(bytes(metadata["source"], "utf-8")).hexdigest()
 
 	@staticmethod
 	def load_order(extensions: List[Tuple[pathlib.Path, dict]]) -> List[pathlib.Path]:
@@ -175,7 +180,7 @@ class ExtensionHelper:
 			yield pathlib.Path(path)
 
 	def load(self, path, metadata, module_name=None):
-		module_name = module_name or f'extension_{hashlib.md5(bytes(metadata["source"], "utf-8")).hexdigest()}'
+		module_name = module_name or 'cbextension' + self.get_hash(metadata)
 		spec = importlib.util.spec_from_file_location(module_name, path / '__init__.py')
 		module = importlib.util.module_from_spec(spec)
 		sys.modules[module_name] = module
@@ -198,11 +203,99 @@ class ExtensionHelper:
 			self.load(path, metadata)
 
 
+class DatabaseWrapper:
+	SELF_NICKNAME = 'self'
+	cache = {}
+
+	def __init__(self, source: pathlib.Path, connection: sqlite3.Connection):
+		self.source = source
+		self.connection = connection
+		DatabaseWrapper.cache[source] = self
+		if self.user_by_name(User.SELF_NICKNAME) is None:
+			self.add_user([User.SELF_NICKNAME])
+
+	def __eq__(self, other):
+		return self.source == other.source
+
+	def cursor(self):
+		return self.connection.cursor()
+
+	def self_user(self):
+		return self.user_by_name(self.SELF_NICKNAME)
+
+	def add_user(self, nicknames, extension_data: Union[str, dict] = None) -> int:
+		"""
+		Add a new user entry to the database and return its row ID if successful.
+		If any of the nicknames already exist, this will raise a ValueError.
+		"""
+		for nickname in nicknames:
+			if self.user_by_name(nickname):
+				raise ValueError(f'A user with the nickname "{nickname}" already exists')
+		self.cursor().execute(
+			'INSERT INTO user_info (nicknames, created_on) '
+			'VALUES (?, ?, ?)',
+			('\n'.join(nicknames) + '\n', utils.utc_timestamp(), extension_data or {})  # TODO: generate default extdata
+		)
+		return int(self.cursor().execute('SELECT last_insert_rowid()').fetchone()[0])
+
+	def user_by_name(self, nickname: str) -> Optional[User]:
+		"""
+		Find and return a User object whose `nicknames` entry in the database matches the given nickname.
+		If no user was found, None will be returned.
+		"""
+		self.cursor().execute('SELECT rowid FROM user_info WHERE nicknames LIKE ?', (f'%{nickname}\n%',))
+		try:
+			rowid = self.cursor().fetchone()[0]
+			return User(self, rowid)
+		except TypeError:
+			return None
+
+	def find_or_add_user(self, nickname, extension_data: Union[str, dict] = None):
+		return self.user_by_name(nickname) or User(self, self.add_user([nickname], extension_data))
+
+
 class User(QObject):
-	def __init__(self, database: profiles.DatabaseWrapper, id):
+	def __init__(self, database: DatabaseWrapper, id):
 		super().__init__(None)
 		self.database = database
 		self.id = id
+
+	def exists(self):
+		self.database.cursor().execute('SELECT rowid FROM user_info WHERE rowid = ?', (self.id,))
+		return bool(self.database.cursor().fetchone())
+
+	@property
+	def nicknames(self):
+		self.database.cursor().execute('SELECT nicknames FROM user_info WHERE rowid = ?', (self.rowid,))
+		return tuple(self.database.cursor().fetchone()[0].split('\n'))
+
+	@nicknames.setter
+	def nicknames(self, value):
+		self.database.cursor().execute(
+			'UPDATE user_info SET nicknames = ? WHERE rowid = ?',
+			('\n'.join(value) + '\n', self.rowid)
+		)
+
+	@property
+	def created_on(self):
+		self.database.cursor().execute('SELECT created_on FROM user_info WHERE rowid = ?', (self.rowid,))
+		return utils.timestamp_to_datetime(self.database.cursor().fetchone()[0])
+
+	@created_on.setter
+	def created_on(self, value: float):
+		self.database.cursor().execute('UPDATE user_info SET created_on = ? WHERE rowid = ?', (value, self.rowid))
+
+	@property
+	def extension_data(self):
+		self.database.cursor().execute('SELECT extension_data FROM user_info WHERE rowid = ?', (self.rowid,))
+		return json.loads(self.database.cursor().fetchone()[0])
+
+	@extension_data.setter
+	def extension_data(self, value: dict):
+		self.database.cursor().execute(
+			'UPDATE user_info SET extension_data = ? WHERE rowid = ?',
+			(json.dumps(value), self.id)
+		)
 
 
 class Message(QObject):

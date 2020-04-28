@@ -1,4 +1,6 @@
 """
 Use this module to keep track of the global state.
 """
-state = None
+from chattyboi import ApplicationState
+
+state: ApplicationState = None

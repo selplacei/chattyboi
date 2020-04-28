@@ -5,7 +5,7 @@ import sys
 from PySide2.QtWidgets import QApplication
 import qasync
 
-import utils, state, config, profiles, gui, chattyboi, extapi
+import utils, config, profiles, gui, state, chattyboi, extapi
 
 
 if __name__ == '__main__':
