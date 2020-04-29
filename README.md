@@ -30,7 +30,7 @@ Requirements: Python 3.7+
 
 If your Python command is something other than `python`, edit `install.sh` at line 35.
 ```
-git clone https://github.com/selplacei/chattyboi.git && cd chattyboi/installer
+git clone https://github.com/selplacei/chattyboi.git && cd chattyboi/scripts
 sh install.sh --help
 ```
 ___
