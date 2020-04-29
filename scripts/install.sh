@@ -3,7 +3,7 @@
 # Create sub-directories 'code', 'extensions', 'profiles'
 # Copy files from repository
 # Copy launch and update scripts
-# Make a venv and install packages
+# Make a venv and scripts packages
 DEFAULT_DEST="$HOME/chattyboi"
 DESTINATION=$DEFAULT_DEST
 UPDATE_ON_COPY=$true
