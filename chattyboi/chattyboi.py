@@ -6,13 +6,14 @@ import collections
 import datetime
 import hashlib
 import importlib.util
+import itertools
 import json
 import pathlib
+import sys
 import sqlite3
 from typing import List, Union, Tuple, Deque, Optional
 
-import itertools
-import sys
+import qasync
 import toml
 from PySide2.QtCore import Signal, QObject
 from PySide2.QtWidgets import QApplication
@@ -25,7 +26,13 @@ import utils
 
 
 def run_default():
+	app = QApplication(sys.argv)
+	app.setApplicationName(config.qt_app_name)
+	app.setOrganizationName(config.qt_org_name)
 	state.state = ApplicationState.default()
+
+	loop = qasync.QEventLoop(app)
+	asyncio.set_event_loop(loop)
 
 	def profile_select_callback(path):
 		profile = profiles.Profile(path)
@@ -39,7 +46,8 @@ def run_default():
 	profile_dialog.rejected.connect(QApplication.instance().quit)
 	profile_dialog.show()
 
-	return asyncio.get_event_loop().run_forever()
+	with loop:
+		return loop.run_forever()
 
 
 class ApplicationState(QObject):
