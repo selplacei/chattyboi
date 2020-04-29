@@ -33,5 +33,5 @@ class ProfileSelectDialog(QDialog):
 		self.confirm_button.clicked.connect(self.accept)
 		self.setWindowTitle('Select Profile')
 
-	def get_selected_profile_path(self) -> pathlib.Path:
+	def get_selected_path(self) -> pathlib.Path:
 		return self.profile_paths[self.profileListView.currentIndex().row()]

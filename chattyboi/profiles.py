@@ -7,6 +7,19 @@ import utils
 
 
 class Profile:
+	"""
+	A class representing data associated with a profile.
+	In ChattyBoi, a profile is essentially all information that gets loaded at runtime, except global configuration.
+	In other words, a profile is an instance of what ChattyBoi stores on the disk, including:
+		* the list of extensions used;
+		* a user database;
+		* per-profile extension data.
+	Physically, a profile can be any directory that contains a valid JSON file whose name matches `PROPERTIES_FILENAME`.
+	The following paths are stored:
+		* PROPERTIES_FILENAME - JSON file with data used by ChattyBoi's core, including the extension list and metadata;
+		* DATABASE_FILENAME - SQLite3 user database; see `Profile.initialize()` for a template;
+		* EXTENSION_DATA_DIRECTORY - parent directory for storing per-profile extension data.
+	"""
 	PROPERTIES_FILENAME = 'profile.json'
 	DATABASE_FILENAME = 'users.db'
 	EXTENSION_DATA_DIRECTORY = 'extension_data'
@@ -38,7 +51,7 @@ class Profile:
 		self.connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME))
 		self.connection.cursor().execute(
 			'CREATE TABLE IF NOT EXISTS user_info ('
-			'username TEXT NOT NULL, '
+			'nicknames TEXT NOT NULL, '
 			'created_on FLOAT, '
 			'extension_data TEXT'
 			')'

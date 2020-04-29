@@ -42,7 +42,7 @@ def run_default():
 
 	# TODO: get search paths from QSettings
 	profile_dialog = gui.ProfileSelectDialog(['./profiles'])
-	profile_dialog.accepted.connect(lambda: profile_select_callback(profile_dialog.get_selected_profile_path()))
+	profile_dialog.accepted.connect(lambda: profile_select_callback(profile_dialog.get_selected_path()))
 	profile_dialog.rejected.connect(QApplication.instance().quit)
 	profile_dialog.show()
 
@@ -58,9 +58,8 @@ class ApplicationState(QObject):
 		* properties, i.e. system and user scope QSettings;
 		* currently loaded extensions;
 		* associated ExtensionHelper;
-		* associated DatabaseWrapper.
-		* active chat streams;
-	The state of the currently running application can be retrieved through the `state` module.
+		* associated DatabaseWrapper;
+		* active chat streams.
 	"""
 	@classmethod
 	def default(cls):
@@ -98,12 +97,12 @@ class ApplicationState(QObject):
 class Extension:
 	"""
 	Information about a specific loaded extension.
-	This only represents the data about an extension; the actual associated module is imported separately,
-	and destroying this object will not unload the associated extension.
+	This only represents the info about an extension; its module is imported separately,
+	and destroying this object will not unload the extension.
 
 	The following information can be retrieved using this class:
 		* metadata: accessed as normal attributes. See `__init__` for required keys.
-		* associated module: contained in the `module` attribute.
+		* associated module: the `module` attribute.
 		* public attributes of the module: accessed with `__get__`, i.e. as in a dict (extension['key']).
 	"""
 	def __init__(self, metadata, module):
@@ -123,7 +122,7 @@ class ExtensionHelper:
 	"""
 	Helper class for managing extensions associated with a specific state.
 	To retrieve the list of needed extensions, the state's profile is used.
-	When extensions are loaded, the `extensions` attribute of the state is updated automatically.
+	When extensions are loaded, the `extensions` list of the state is updated.
 
 	The responsibilities of this class are as follows:
 		* finding extension packages from a profile's properties;
@@ -175,7 +174,7 @@ class ExtensionHelper:
 					queue.append(m)
 		if any(edges for node, edges in graph.items()):
 			raise ValueError(
-				f'Encountered a dependency cycle when finding the load order for extensions.'
+				f'Encountered a dependency cycle when finding the load order for extensions. '
 				f'Remaining values in the dependency graph:\n{graph}'
 			)
 		return order
@@ -212,6 +211,10 @@ class ExtensionHelper:
 
 
 class DatabaseWrapper:
+	"""
+	Wrapper around a profile's SQLite3 database that provides ChattyBoi-specific helper functions.
+	The associated connection and cursor are stored in the `connection` and `cursor()` attributes.
+	"""
 	SELF_NICKNAME = 'self'
 	cache = {}
 
@@ -242,7 +245,8 @@ class DatabaseWrapper:
 		self.cursor().execute(
 			'INSERT INTO user_info (nicknames, created_on) '
 			'VALUES (?, ?, ?)',
-			('\n'.join(nicknames) + '\n', utils.utc_timestamp(), extension_data or {})  # TODO: generate default extdata
+			# TODO: generate default extension data instead of an empty dict
+			('\n'.join(nicknames), utils.utc_timestamp(), json.dumps(extension_data or {}))
 		)
 		return int(self.cursor().execute('SELECT last_insert_rowid()').fetchone()[0])
 
@@ -263,6 +267,18 @@ class DatabaseWrapper:
 
 
 class User(QObject):
+	"""
+	A class that represents a single user's entry in the database.
+	All information is gathered from the `user_info` table, and the following columns are expected:
+		* nicknames: TEXT - newline-separated (\n) list of unique names that refer to this user,
+							where the first one is the preferred/default.
+		* created_on: FLOAT - POSIX timestamp of the UTC time at which this entry was created.
+		* extension_data: TEXT - JSON object representing extension data. More info in `extapi.store_user_data`.
+	Initialized with a DatabaseWrapper and the SQLite3 rowid. If the row doesn't exist, an error is not raised;
+	if you're creating User objects manually, you probably know what you're doing. The user's existence can be
+	tested with the `exists()` method.
+	To get User objects by searching for a name, adding a new user, etc., use the DatabaseWrapper class.
+	"""
 	def __init__(self, database: DatabaseWrapper, id):
 		super().__init__(None)
 		self.database = database
@@ -307,6 +323,13 @@ class User(QObject):
 
 
 class Message(QObject):
+	"""
+	A class representing a single message.
+	Upon creation, if a source is specified, the message will be added to the message cache
+	and the `messageReceived` signal will be emitted.
+	A message with `None` as the source can be useful for testing, where the bot only needs
+	to react to a message without interacting with its author.
+	"""
 	def __init__(self, source: Optional[Chat], author: User, content, timestamp=None):
 		super().__init__(None)
 		self.source = source
