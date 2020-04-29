@@ -71,7 +71,7 @@ class ApplicationState(QObject):
 		super().__init__(None)
 		self._profile = profile
 		self.properties = properties
-		self.extensions = extensions or []
+		self.extensions: List[Extension] = extensions or []
 		self.extension_helper = ExtensionHelper(self)
 		self.chats = chats or []
 
@@ -101,21 +101,39 @@ class Extension:
 	and destroying this object will not unload the extension.
 
 	The following information can be retrieved using this class:
-		* metadata: accessed as normal attributes. See `__init__` for required keys.
+		* metadata: accessed as normal attributes; they are listed as annotations in this class.
 		* associated module: the `module` attribute.
 		* public attributes of the module: accessed with `__get__`, i.e. as in a dict (extension['key']).
 	"""
+	name: str
+	source: str
+	author: str
+	version: str
+	source: str
+	licence: str
+	summary: str
+	description: str
+	requires: List[str]
+	implements: List[str]
+
 	def __init__(self, metadata, module):
-		"""
-		`metadata` should have the following keys:
-			name, author, version, source, license, summary, description, requires, implements
-		"""
 		self.__dict__.update(metadata)
 		self.module = module
+		self._aliases = set()
+
+	def __eq__(self, other):
+		return self.module == other.module
 
 	def __getitem__(self, item):
 		if item in self.module.__all__:
 			return getattr(self.module, item)
+
+	@property
+	def aliases(self):
+		return {self.source, self.module.__name__} | self._aliases | set(self.implements)
+
+	def add_alias(self, alias):
+		self._aliases.add(alias)
 
 
 class ExtensionHelper:
