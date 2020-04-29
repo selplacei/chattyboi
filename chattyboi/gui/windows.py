@@ -35,3 +35,8 @@ class ProfileSelectDialog(QDialog):
 
 	def get_selected_path(self) -> pathlib.Path:
 		return self.profile_paths[self.profileListView.currentIndex().row()]
+
+
+class MainWindow(QMainWindow):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)

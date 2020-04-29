@@ -39,6 +39,8 @@ def run_default():
 		state.state.profile = profile
 		with profile:
 			state.state.extension_helper.load_all()
+			state.state.main_window = gui.MainWindow()
+			state.state.main_window.show()
 
 	# TODO: get search paths from QSettings
 	profile_dialog = gui.ProfileSelectDialog(['./profiles'])
@@ -48,50 +50,6 @@ def run_default():
 
 	with loop:
 		return loop.run_forever()
-
-
-class ApplicationState(QObject):
-	"""
-	Data structure that describes a state of the ChattyBoi application.
-	The following information can be retrieved using this class:
-		* the associated profile;
-		* properties, i.e. system and user scope QSettings;
-		* currently loaded extensions;
-		* associated ExtensionHelper;
-		* associated DatabaseWrapper;
-		* active chat streams.
-	"""
-	@classmethod
-	def default(cls):
-		return cls(
-			properties={'system': config.system_settings, 'user': config.user_settings}
-		)
-
-	def __init__(self, properties, profile=None, extensions=None, chats=None):
-		super().__init__(None)
-		self._profile = profile
-		self.properties = properties
-		self.extensions: List[Extension] = extensions or []
-		self.extension_helper = ExtensionHelper(self)
-		self.chats = chats or []
-
-	@property
-	def profile(self):
-		return self._profile
-
-	@profile.setter
-	def profile(self, value):
-		if self._profile is None:
-			self._profile = value
-		else:
-			raise AttributeError('The profile cannot be changed after it has been set.')
-
-	@property
-	def database(self):
-		return self.profile.get_database_wrapper()
-
-	def find_extension_by_module(self, module):
-		return next(ext for ext in self.extensions if ext.module is module)
 
 
 class Extension:
@@ -348,13 +306,13 @@ class Message(QObject):
 	A message with `None` as the source can be useful for testing, where the bot only needs
 	to react to a message without interacting with its author.
 	"""
-	def __init__(self, source: Optional[Chat], author: User, content, timestamp=None):
+	def __init__(self, source: Optional[Chat], author: User, content, timestamp=None, emit_source_signal=True):
 		super().__init__(None)
 		self.source = source
 		self.author = author
 		self.content = content
 		self.timestamp = timestamp or datetime.datetime.now().timestamp()
-		if self.source:
+		if self.source and emit_source_signal:
 			self.source.messages.append(self)
 			self.source.messageReceived.emit(self)
 
@@ -365,3 +323,52 @@ class Chat(QObject):
 	def __init__(self):
 		super().__init__(None)
 		self.messages: Deque[Message] = collections.deque()
+
+
+class ApplicationState(QObject):
+	"""
+	Data structure that describes a state of the ChattyBoi application.
+	The following information can be retrieved using this class:
+		* the associated profile;
+		* properties, i.e. system and user scope QSettings;
+		* currently loaded extensions;
+		* associated ExtensionHelper;
+		* associated DatabaseWrapper;
+		* active chat streams;
+		* the main window.
+	"""
+	anyMessageReceived = Signal(Message)
+
+	@classmethod
+	def default(cls):
+		return cls(
+			properties={'system': config.system_settings, 'user': config.user_settings}
+		)
+
+	def __init__(self, properties, profile=None, extensions=None, chats=None, main_window=None):
+		super().__init__(None)
+		self._profile = profile
+		self.properties = properties
+		self.extensions: List[Extension] = extensions or []
+		self.extension_helper = ExtensionHelper(self)
+		self.chats = chats or set()
+		self.main_window = main_window
+
+	@property
+	def profile(self):
+		return self._profile
+
+	@profile.setter
+	def profile(self, value):
+		if self._profile is None:
+			self._profile = value
+		else:
+			raise AttributeError('The profile cannot be changed after it has been set.')
+
+	@property
+	def database(self):
+		return self.profile.get_database_wrapper()
+
+	def find_extension_by_module(self, module):
+		return next(ext for ext in self.extensions if ext.module is module)
+
