@@ -246,7 +246,7 @@ class DatabaseWrapper:
 			'INSERT INTO user_info (nicknames, created_on) '
 			'VALUES (?, ?, ?)',
 			# TODO: generate default extension data instead of an empty dict
-			('\n'.join(nicknames), utils.utc_timestamp(), json.dumps(extension_data or {}))
+			('\n'.join(nicknames) + '\n', utils.utc_timestamp(), json.dumps(extension_data or {}))
 		)
 		return int(self.cursor().execute('SELECT last_insert_rowid()').fetchone()[0])
 
@@ -279,19 +279,19 @@ class User(QObject):
 	tested with the `exists()` method.
 	To get User objects by searching for a name, adding a new user, etc., use the DatabaseWrapper class.
 	"""
-	def __init__(self, database: DatabaseWrapper, id):
+	def __init__(self, database: DatabaseWrapper, rowid):
 		super().__init__(None)
 		self.database = database
-		self.id = id
+		self.rowid = rowid
 
 	def exists(self):
-		self.database.cursor().execute('SELECT rowid FROM user_info WHERE rowid = ?', (self.id,))
+		self.database.cursor().execute('SELECT rowid FROM user_info WHERE rowid = ?', (self.rowid,))
 		return bool(self.database.cursor().fetchone())
 
 	@property
 	def nicknames(self):
 		self.database.cursor().execute('SELECT nicknames FROM user_info WHERE rowid = ?', (self.rowid,))
-		return tuple(self.database.cursor().fetchone()[0].split('\n'))
+		return tuple(self.database.cursor().fetchone()[0].strip('\n').split('\n'))
 
 	@nicknames.setter
 	def nicknames(self, value):
@@ -318,7 +318,7 @@ class User(QObject):
 	def extension_data(self, value: dict):
 		self.database.cursor().execute(
 			'UPDATE user_info SET extension_data = ? WHERE rowid = ?',
-			(json.dumps(value), self.id)
+			(json.dumps(value), self.rowid)
 		)
 
 
