@@ -25,7 +25,6 @@ The main "selling" point for ChattyBoi is the fact that it's not platform-specif
 
 This means that that extensions don't have to be re-written just to support Twitch, Discord, IRC, etc., unless they use APIs specific to those platforms.
 
-___
 ## Installation
 The base program is not yet ready. However, you can test what is done so far by cloning the repository and launching the installer or manually copying the files.
 For now, the installer only works on *nix systems (macOS, Linux, etc.), since it's just a shell script.
@@ -42,8 +41,6 @@ ___
 ### **Motivation**
 A certain Twitch streamer was the main inspiration behind this project. Come over to [ZeeGee_](https://twitch.tv/zeegee_)
 if you like variety streamers that have a nice smaller community!
-
-___
 
 ## TODOs
 

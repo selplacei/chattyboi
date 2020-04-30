@@ -169,6 +169,7 @@ class ExtensionHelper:
 		sys.modules[module_name] = module
 		extension = Extension(metadata, module)
 		self.state.extensions.append(extension)
+		self.state.profile.extensions.add(path)
 		spec.loader.exec_module(module)
 
 	def load_all(self):

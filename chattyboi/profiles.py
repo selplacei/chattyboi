@@ -25,8 +25,9 @@ class Profile:
 	EXTENSION_DATA_DIRECTORY = 'extension_data'
 	DEFAULT_PROPERTIES = {
 		'name': 'Unnamed',
-		'created_at': utils.utc_timestamp(),
-		'extensions': []
+		'created_on': utils.utc_timestamp(),
+		'extensions': set(),
+		'note': None
 	}
 
 	def __init__(self, path: pathlib.Path):
@@ -44,6 +45,7 @@ class Profile:
 	def __exit__(self, exc_type, exc_val, exc_tb):
 		self.connection.commit()
 		self.connection.close()
+		self.save_properties()
 
 	def initialize(self):
 		if not self.extension_data_dir.is_dir():
@@ -64,13 +66,40 @@ class Profile:
 	def load_properties(self):
 		try:
 			self.properties = json.load((self.path / self.PROPERTIES_FILENAME).open())
+			self.properties['extensions'] = set(self.properties['extensions'])
 		except FileNotFoundError:
 			self.properties = self.DEFAULT_PROPERTIES
 			self.save_properties()
 
 	def save_properties(self):
-		json.dump(self.properties, (self.path / self.PROPERTIES_FILENAME).open('w'))
+		_properties = self.properties.copy()
+		_properties['extensions'] = list(_properties['extensions'])
+		json.dump(_properties, (self.path / self.PROPERTIES_FILENAME).open('w'))
 
 	@property
 	def name(self):
 		return self.properties['name']
+
+	@name.setter
+	def name(self, value):
+		self.properties['name'] = value
+
+	@property
+	def created_on(self):
+		return utils.timestamp_to_datetime(self.properties['created_on'])
+
+	@property
+	def extensions(self):
+		return self.properties['extensions']
+
+	@extensions.setter
+	def extensions(self, value):
+		self.properties['extensions'] = set(value)
+
+	@property
+	def note(self):
+		return self.properties['note'] or ''
+
+	@note.setter
+	def note(self, value):
+		self.properties['note'] = value
