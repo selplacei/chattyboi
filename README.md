@@ -42,3 +42,29 @@ ___
 ### **Motivation**
 A certain Twitch streamer was the main inspiration behind this project. Come over to [ZeeGee_](https://twitch.tv/zeegee_)
 if you like variety streamers that have a nice smaller community!
+
+___
+
+## TODOs
+
+- Improve the GUI: Dashboard that shows all active chats and allows sending messages to them; database viewer; config editor; extension list/info; about page; better profile selector, with creating profiles and configuring them before initialization; easier interaction with the GUI for extensions
+- Generate docs for the code and write docs for extension developing
+- Importing/exporting profiles and extensions
+- Write some basic extensions:
+  * Commands, without using ChattyScript
+  * Basic moderation: permission levels, blacklisting, user tags (roles)
+  * Discord integration (chat only)
+  * Currency system and a gambling mini-game (for testing)
+- Make a Windows installer
+- Polish the UX and add any missing features
+- Write more sophisticated extensions:
+  * ChattyScript
+  * Moderation
+  * Commands, using ChattyScript and moderation
+  * Twitch integration
+  * Anything else to make this at least as good as DeepBot
+  * Discord integration
+  * Web dashboard to be used by chatters, which will be supported by some of these other extensions
+  * Statistics
+- When a somewhat stable release is made, add ChattyBoi to the AUR
+- (Possibly) CLI mode, either as a parameter or a separate executable.
