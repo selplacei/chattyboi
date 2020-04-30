@@ -5,13 +5,15 @@
 
 **ChattyBoi** - chat bot backend and UI that can support any chat platform.
 
-The base program, a.k.a. the "core", doesn't provide much functionality other than making it easy to add your own. Useful features, such as platform integration, commands, or GUI elements can be added as _extensions_. This repository contains the core; in order to be useful, it needs extra configuration. Some presets and basic guides will be available when the base program is done.
+By itself, ChattyBoi is more of a framework than a useful application. The "core", i.e. the base program, allows you to easily add _extensions_, which in turn can add platform integration, commands, new GUI elements, and much more.
+
+In order to be useful as a chat bot, this application needs extra configuration. Some presets (pre-configured profiles that _are_ useful) and guides will be available when the base program is done.
 
 ## Notable features:
 
 - Completely free and open-source.
-- As a result, fully decentralized and hackable.
-- ChattyBoi can do pretty much anything chat-related (and more, if you know Python).
+- Thus, fully decentralized and hackable.
+- ChattyBoi can do pretty much anything chat-related (and more, if there's an extension for it).
 - There doesn't have to be a "default chat", the users of which have to link their accounts to other chat platforms.
 - There are some pretty cool extensions. (Or, well, will be when the time comes). For example, there will be a command editor with its own scripting syntax.
 - Tons of documentation, examples, and presets are planned.
@@ -19,14 +21,16 @@ The base program, a.k.a. the "core", doesn't provide much functionality other th
 ___
 
 ### **Why do we need another bot?**
-The main "selling" point for ChattyBoi is the fact that it's not platform-specific. Extensions give you the ability to abstract away platform-specific interactions, and instead write and run things that work everywhere. This means that that extensions don't have to be re-written just to support Twitch, Discord, IRC, etc., unless they use APIs specific to those platforms.
+The main "selling" point for ChattyBoi is the fact that it's not platform-specific. Extensions give you the ability to abstract away platform-specific interactions, and instead write and run things that work everywhere. For example: a command only needs to know that some specific text was sent to a chat, and only needs to tell ChattyBoi to reply with some other text. The actual implementation of receiving and sending messages is left up to the other extension.
+
+This means that that extensions don't have to be re-written just to support Twitch, Discord, IRC, etc., unless they use APIs specific to those platforms.
 
 ___
-### **Installation**
+## Installation
 The base program is not yet ready. However, you can test what is done so far by cloning the repository and launching the installer or manually copying the files.
-For now, the installer only works on *nix systems (macOS, Linux, etc.) - it's just a shell script.
+For now, the installer only works on *nix systems (macOS, Linux, etc.), since it's just a shell script.
 
-Requirements: Python 3.7+
+Requirements: Python 3.8+
 
 If your Python command is something other than `python`, edit `install.sh` at line 35.
 ```

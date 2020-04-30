@@ -80,7 +80,7 @@ class Extension:
 		self._aliases = set()
 
 	def __eq__(self, other):
-		return self.module == other.module
+		return self.module is other.module
 
 	def __getitem__(self, item):
 		if item in self.module.__all__:
@@ -88,7 +88,7 @@ class Extension:
 
 	@property
 	def aliases(self):
-		return {self.source, self.module.__name__} | self._aliases | set(self.implements)
+		return {self.source, self.module.__name__, *self.implements} | self._aliases
 
 	def add_alias(self, alias):
 		self._aliases.add(alias)
