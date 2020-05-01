@@ -25,11 +25,6 @@ import state
 import utils
 
 
-delayed_connect_event_slots = {
-	'ready': []
-}
-
-
 class Extension:
 	"""
 	Information about a specific loaded extension.
@@ -351,6 +346,13 @@ class ApplicationState(QObject):
 		return next(ext for ext in self.extensions if ext.module is module)
 
 
+delayed_connect_event_slots = {
+	'on_ready': [],
+	'always_run': [],
+	'on_cleanup': []
+}
+
+
 def run_default():
 	app = QApplication(sys.argv)
 	app.setApplicationName(config.qt_app_name)
@@ -363,15 +365,22 @@ def run_default():
 	def profile_select_callback(path):
 		profile = profiles.Profile(path)
 		profile.initialize()
-		app.aboutToQuit.connect(profile.cleanup)
 		state.state.profile = profile
 		_state.extension_helper.load_all()
-		for slot in delayed_connect_event_slots['ready']:
+		for slot in delayed_connect_event_slots['on_ready']:
 			_state.ready.connect(slot)
+		for slot in [profile.cleanup] + delayed_connect_event_slots['on_cleanup']:
+			app.aboutToQuit.connect(slot)
 
 		_state.main_window = gui.MainWindow()
 		_state.main_window.show()
 		_state.ready.emit()
+		for coro, interval in delayed_connect_event_slots['always_run']:
+			async def repeat():
+				while loop.is_running():
+					await coro()
+					await asyncio.sleep(interval)
+			loop.create_task(repeat())
 
 	# TODO: get search paths from QSettings
 	profile_dialog = gui.ProfileSelectDialog(['./profiles'])

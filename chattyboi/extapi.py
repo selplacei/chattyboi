@@ -28,7 +28,14 @@ def state():
 
 
 def on_ready(slot):
-	chattyboi.delayed_connect_event_slots['ready'].append(slot)
+	chattyboi.delayed_connect_event_slots['on_ready'].append(slot)
+
+
+def always_run(interval=1):
+	def wrapper(coro):
+		chattyboi.delayed_connect_event_slots['always_run'].append((coro, interval))
+		return coro
+	return wrapper
 
 
 def add_extension_alias(source, name):
