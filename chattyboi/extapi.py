@@ -5,15 +5,14 @@ import chattyboi
 import config
 import gui
 import profiles
+import state as _state
 import utils
-from state import state
 
 
-types = _types.SimpleNamespace(
-	User=chattyboi.User,
-	Message=chattyboi.Message,
-	Chat=chattyboi.Chat
-)
+Extension = chattyboi.Extension
+User = chattyboi.User
+Message = chattyboi.Message
+Chat = chattyboi.Chat
 
 modules = _types.SimpleNamespace(
 	chattyboi=chattyboi,
@@ -22,6 +21,14 @@ modules = _types.SimpleNamespace(
 	profiles=profiles,
 	utils=utils
 )
+
+
+def state():
+	return _state.state
+
+
+def on_ready(slot):
+	chattyboi.delayed_connect_event_slots['ready'].append(slot)
 
 
 def add_extension_alias(source, name):
@@ -33,7 +40,7 @@ def add_extension_alias(source, name):
 	extension.add_alias(name)
 
 
-def get_extension(identifier: str) -> typing.Optional[types.Extension]:
+def get_extension(identifier: str) -> typing.Optional[Extension]:
 	"""
 	Get an Extension object that matches the identifier and is loaded into the state.
 	Useful for retrieving the current extension, i.e. `get_extension(__name__)`.
@@ -41,19 +48,9 @@ def get_extension(identifier: str) -> typing.Optional[types.Extension]:
 	:param identifier: a source, a name, an alias, or a module name
 	:returns: Extension object if found, None otherwise
 	"""
-	return next((candidate for candidate in state.extensions if identifier in candidate.aliases), None)
+	return next((candidate for candidate in state().extensions if identifier in candidate.aliases), None)
 
 
-def register_chat(chat: types.Chat):
-	state.chats.add(chat)
-	chat.messageReceived.connect(state.anyMessageReceived.emit)
-
-
-def subscribe_to_messages(callback: callable):
-	"""
-	Subscribe to all messages, i.e. call `callback` any time a message is received.
-
-	:param callback: callable that takes a Message as the argument
-	"""
-	state.anyMessageReceived.connect(callback)
-
+def register_chat(chat: Chat):
+	state().chats.add(chat)
+	chat.messageReceived.connect(state().anyMessageReceived.emit)

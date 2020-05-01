@@ -38,15 +38,6 @@ class Profile:
 		self.extension_data_dir = pathlib.Path(self.path / self.EXTENSION_DATA_DIRECTORY)
 		self.load_properties()
 
-	def __enter__(self):
-		self.initialize()
-		return self
-
-	def __exit__(self, exc_type, exc_val, exc_tb):
-		self.connection.commit()
-		self.connection.close()
-		self.save_properties()
-
 	def initialize(self):
 		if not self.extension_data_dir.is_dir():
 			self.extension_data_dir.mkdir(parents=True)
@@ -58,6 +49,11 @@ class Profile:
 			'extension_data TEXT'
 			')'
 		)
+
+	def cleanup(self):
+		self.connection.commit()
+		self.connection.close()
+		self.save_properties()
 
 	def get_database_wrapper(self):
 		from chattyboi import DatabaseWrapper

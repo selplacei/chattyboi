@@ -25,31 +25,9 @@ import state
 import utils
 
 
-def run_default():
-	app = QApplication(sys.argv)
-	app.setApplicationName(config.qt_app_name)
-	app.setOrganizationName(config.qt_org_name)
-	state.state = ApplicationState.default()
-
-	loop = qasync.QEventLoop(app)
-	asyncio.set_event_loop(loop)
-
-	def profile_select_callback(path):
-		profile = profiles.Profile(path)
-		state.state.profile = profile
-		with profile:
-			state.state.extension_helper.load_all()
-			state.state.main_window = gui.MainWindow()
-			state.state.main_window.show()
-
-	# TODO: get search paths from QSettings
-	profile_dialog = gui.ProfileSelectDialog(['./profiles'])
-	profile_dialog.accepted.connect(lambda: profile_select_callback(profile_dialog.get_selected_path()))
-	profile_dialog.rejected.connect(QApplication.instance().quit)
-	profile_dialog.show()
-
-	with loop:
-		return loop.run_forever()
+delayed_connect_event_slots = {
+	'ready': []
+}
 
 
 class Extension:
@@ -158,10 +136,6 @@ class ExtensionHelper:
 	def __init__(self, state):
 		self.state = state
 
-	def paths(self):
-		for path in self.state.profile.properties['extensions']:
-			yield pathlib.Path(path)
-
 	def load(self, path, metadata, module_name=None):
 		module_name = module_name or 'cbextension' + self.get_hash(metadata)
 		spec = importlib.util.spec_from_file_location(module_name, path / '__init__.py')
@@ -169,12 +143,11 @@ class ExtensionHelper:
 		sys.modules[module_name] = module
 		extension = Extension(metadata, module)
 		self.state.extensions.append(extension)
-		self.state.profile.extensions.add(path)
 		spec.loader.exec_module(module)
 
 	def load_all(self):
-		paths = self.paths()
-		metadata = [self.get_metadata(fp) for fp in paths]
+		paths = list(map(pathlib.Path, self.state.profile.extensions))
+		metadata = [self.get_metadata(fp / 'extension.toml') for fp in paths]
 		# Check for duplicate implementations
 		implementations = {md['source']: {md['source']} | set(md['implements']) for md in metadata}
 		for left, right in filter(lambda src: src[0] != src[1], itertools.product(implementations.keys(), repeat=2)):
@@ -183,8 +156,8 @@ class ExtensionHelper:
 					f'Duplicate extension implementations found:'
 					f'Both [{left}] and [{right}] implement {conflicts}'
 				)
-		for path, metadata in self.load_order(zip(paths, metadata)):
-			self.load(path, metadata)
+		for path in self.load_order(zip(paths, metadata)):
+			self.load(path, metadata[paths.index(path)])
 
 
 class DatabaseWrapper:
@@ -199,8 +172,8 @@ class DatabaseWrapper:
 		self.source = source
 		self.connection = connection
 		DatabaseWrapper.cache[source] = self
-		if self.user_by_name(User.SELF_NICKNAME) is None:
-			self.add_user([User.SELF_NICKNAME])
+		if self.user_by_name(self.SELF_NICKNAME) is None:
+			self.add_user([self.SELF_NICKNAME])
 
 	def __eq__(self, other):
 		return self.source == other.source
@@ -220,7 +193,7 @@ class DatabaseWrapper:
 			if self.user_by_name(nickname):
 				raise ValueError(f'A user with the nickname "{nickname}" already exists')
 		self.cursor().execute(
-			'INSERT INTO user_info (nicknames, created_on) '
+			'INSERT INTO user_info (nicknames, created_on, extension_data) '
 			'VALUES (?, ?, ?)',
 			# TODO: generate default extension data instead of an empty dict
 			('\n'.join(nicknames) + '\n', utils.utc_timestamp(), json.dumps(extension_data or {}))
@@ -307,15 +280,12 @@ class Message(QObject):
 	A message with `None` as the source can be useful for testing, where the bot only needs
 	to react to a message without interacting with its author.
 	"""
-	def __init__(self, source: Optional[Chat], author: User, content, timestamp=None, emit_source_signal=True):
+	def __init__(self, source: Optional[Chat], author: User, content, timestamp=None):
 		super().__init__(None)
 		self.source = source
 		self.author = author
 		self.content = content
 		self.timestamp = timestamp or datetime.datetime.now().timestamp()
-		if self.source and emit_source_signal:
-			self.source.messages.append(self)
-			self.source.messageReceived.emit(self)
 
 
 class Chat(QObject):
@@ -324,6 +294,12 @@ class Chat(QObject):
 	def __init__(self):
 		super().__init__(None)
 		self.messages: Deque[Message] = collections.deque()
+
+	def new_message(self, author, content):
+		message = Message(self, author, content)
+		self.messages.append(message)
+		self.messageReceived.emit(message)
+		return message
 
 
 class ApplicationState(QObject):
@@ -338,6 +314,7 @@ class ApplicationState(QObject):
 		* active chat streams;
 		* the main window.
 	"""
+	ready = Signal()
 	anyMessageReceived = Signal(Message)
 
 	@classmethod
@@ -373,3 +350,34 @@ class ApplicationState(QObject):
 	def find_extension_by_module(self, module):
 		return next(ext for ext in self.extensions if ext.module is module)
 
+
+def run_default():
+	app = QApplication(sys.argv)
+	app.setApplicationName(config.qt_app_name)
+	app.setOrganizationName(config.qt_org_name)
+	loop = qasync.QEventLoop(app)
+	asyncio.set_event_loop(loop)
+
+	_state = state.state = ApplicationState.default()
+
+	def profile_select_callback(path):
+		profile = profiles.Profile(path)
+		profile.initialize()
+		app.aboutToQuit.connect(profile.cleanup)
+		state.state.profile = profile
+		_state.extension_helper.load_all()
+		for slot in delayed_connect_event_slots['ready']:
+			_state.ready.connect(slot)
+
+		_state.main_window = gui.MainWindow()
+		_state.main_window.show()
+		_state.ready.emit()
+
+	# TODO: get search paths from QSettings
+	profile_dialog = gui.ProfileSelectDialog(['./profiles'])
+	profile_dialog.accepted.connect(lambda: profile_select_callback(profile_dialog.get_selected_path()))
+	profile_dialog.rejected.connect(QApplication.instance().quit)
+	profile_dialog.show()
+
+	with loop:
+		return loop.run_forever()
