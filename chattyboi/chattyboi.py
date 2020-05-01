@@ -167,8 +167,6 @@ class DatabaseWrapper:
 		self.source = source
 		self.connection = connection
 		DatabaseWrapper.cache[source] = self
-		if self.user_by_name(self.SELF_NICKNAME) is None:
-			self.add_user([self.SELF_NICKNAME])
 
 	def __eq__(self, other):
 		return self.source == other.source
@@ -177,7 +175,7 @@ class DatabaseWrapper:
 		return self.connection.cursor()
 
 	def self_user(self):
-		return self.user_by_name(self.SELF_NICKNAME)
+		return self.find_or_add_user(self.SELF_NICKNAME)
 
 	def add_user(self, nicknames, extension_data: Union[str, dict] = None) -> int:
 		"""
@@ -200,9 +198,12 @@ class DatabaseWrapper:
 		Find and return a User object whose `nicknames` entry in the database matches the given nickname.
 		If no user was found, None will be returned.
 		"""
-		self.cursor().execute('SELECT rowid FROM user_info WHERE nicknames LIKE ?', (f'%{nickname}\n%',))
+		# self.cursor().execute('SELECT rowid FROM user_info WHERE nicknames LIKE ?', (f'"%self\n%"',))
+		# print(self.cursor().fetchall())
+		c = self.cursor()
+		c.execute('SELECT rowid FROM user_info WHERE nicknames LIKE ?', (f'{nickname}\n',))
 		try:
-			rowid = self.cursor().fetchone()[0]
+			rowid = c.fetchone()[0]
 			return User(self, rowid)
 		except TypeError:
 			return None
@@ -230,13 +231,19 @@ class User(QObject):
 		self.rowid = rowid
 
 	def exists(self):
-		self.database.cursor().execute('SELECT rowid FROM user_info WHERE rowid = ?', (self.rowid,))
-		return bool(self.database.cursor().fetchone())
+		c = self.database.cursor()
+		c.execute('SELECT rowid FROM user_info WHERE rowid = ?', (self.rowid,))
+		return bool(c.fetchone())
+
+	@property
+	def name(self):
+		return self.nicknames[0]
 
 	@property
 	def nicknames(self):
-		self.database.cursor().execute('SELECT nicknames FROM user_info WHERE rowid = ?', (self.rowid,))
-		return tuple(self.database.cursor().fetchone()[0].strip('\n').split('\n'))
+		c = self.database.cursor()
+		c.execute('SELECT nicknames FROM user_info WHERE rowid = ?', (self.rowid,))
+		return tuple(c.fetchone()[0].strip('\n').split('\n'))
 
 	@nicknames.setter
 	def nicknames(self, value):
@@ -247,8 +254,9 @@ class User(QObject):
 
 	@property
 	def created_on(self):
-		self.database.cursor().execute('SELECT created_on FROM user_info WHERE rowid = ?', (self.rowid,))
-		return utils.timestamp_to_datetime(self.database.cursor().fetchone()[0])
+		c = self.database.cursor()
+		c.execute('SELECT created_on FROM user_info WHERE rowid = ?', (self.rowid,))
+		return utils.timestamp_to_datetime(c.fetchone()[0])
 
 	@created_on.setter
 	def created_on(self, value: float):
@@ -256,8 +264,9 @@ class User(QObject):
 
 	@property
 	def extension_data(self):
-		self.database.cursor().execute('SELECT extension_data FROM user_info WHERE rowid = ?', (self.rowid,))
-		return json.loads(self.database.cursor().fetchone()[0])
+		c = self.database.cursor()
+		c.execute('SELECT extension_data FROM user_info WHERE rowid = ?', (self.rowid,))
+		return json.loads(c.fetchone()[0])
 
 	@extension_data.setter
 	def extension_data(self, value: dict):
@@ -295,6 +304,9 @@ class Chat(QObject):
 		self.messages.append(message)
 		self.messageReceived.emit(message)
 		return message
+
+	async def send(self, content):
+		pass
 
 
 class ApplicationState(QObject):
@@ -349,6 +361,7 @@ class ApplicationState(QObject):
 delayed_connect_event_slots = {
 	'on_ready': [],
 	'always_run': [],
+	'on_message': [],
 	'on_cleanup': []
 }
 
@@ -375,6 +388,8 @@ def run_default():
 		_state.main_window = gui.MainWindow()
 		_state.main_window.show()
 		_state.ready.emit()
+		for slot in delayed_connect_event_slots['on_message']:
+			_state.anyMessageReceived.connect(slot)
 		for coro, interval in delayed_connect_event_slots['always_run']:
 			async def repeat():
 				while loop.is_running():

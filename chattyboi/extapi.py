@@ -38,6 +38,11 @@ def always_run(interval=1):
 	return wrapper
 
 
+def on_message(slot):
+	chattyboi.delayed_connect_event_slots['on_message'].append(slot)
+	return slot
+
+
 def add_extension_alias(source, name):
 	extension = get_extension(source)
 	if extension is None:
