@@ -1,2 +1,2 @@
 #!/bin/sh
-./code/venv/bin/python code/main.py "#@"
+./code/venv/bin/python code/main.py "$@"

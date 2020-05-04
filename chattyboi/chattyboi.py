@@ -8,6 +8,7 @@ import hashlib
 import importlib.util
 import itertools
 import json
+import logging
 import pathlib
 import sys
 import sqlite3
@@ -23,6 +24,13 @@ import gui
 import profiles
 import state
 import utils
+
+logging.basicConfig(
+	format=config.log_format,
+	datefmt=config.log_datefmt,
+	level=config.log_level
+)
+logger = logging.getLogger('chattyboi')
 
 
 class Extension:
@@ -141,7 +149,8 @@ class ExtensionHelper:
 		spec.loader.exec_module(module)
 
 	def load_all(self):
-		paths = list(map(pathlib.Path, self.state.profile.extensions))
+		# TODO: use a config variable instead of a hardcoded extension directory
+		paths = list((pathlib.Path('./extensions') / name) for name in self.state.profile.extensions)
 		metadata = [self.get_metadata(fp / 'extension.toml') for fp in paths]
 		# Check for duplicate implementations
 		implementations = {md['source']: {md['source']} | set(md['implements']) for md in metadata}
@@ -340,17 +349,21 @@ class ApplicationState(QObject):
 	@classmethod
 	def default(cls):
 		return cls(
-			properties={'system': config.system_settings, 'user': config.user_settings}
+			properties={'system': config.system_settings, 'user': config.user_settings},
+			logger=logger
 		)
 
-	def __init__(self, properties, profile=None, extensions=None, chats=None, main_window=None):
+	def __init__(self, properties, logger, profile=None, extensions=None, chats=None, main_window=None):
 		super().__init__(None)
 		self._profile = profile
 		self.properties = properties
+		self.logger = logger
 		self.extensions: List[Extension] = extensions or []
-		self.extension_helper = ExtensionHelper(self)
 		self.chats = chats or []
 		self.main_window = main_window
+		self.start_time = None
+		self.extension_helper = ExtensionHelper(self)
+		self.ready.connect(self._on_ready)
 
 	@property
 	def profile(self):
@@ -366,6 +379,13 @@ class ApplicationState(QObject):
 	@property
 	def database(self):
 		return self.profile.get_database_wrapper()
+
+	def _on_ready(self):
+		self.start_time = datetime.datetime.now()
+
+	@property
+	def uptime(self):
+		return datetime.datetime.now() - self.start_time
 
 	def find_extension_by_module(self, module):
 		return next(ext for ext in self.extensions if ext.module is module)
@@ -404,16 +424,16 @@ def run_default():
 			app.aboutToQuit.connect(slot)
 
 		_state.main_window = gui.MainWindow(_state)
-		_state.main_window.show()
-		_state.ready.emit()
 		for slot in delayed_connect_slots['on_message']:
 			_state.anyMessageReceived.connect(slot)
+		_state.ready.emit()
 		for coro, interval in delayed_connect_slots['always_run']:
 			async def repeat():
 				while loop.is_running():
 					await coro()
 					await asyncio.sleep(interval)
 			loop.create_task(repeat())
+		_state.main_window.show()
 
 	# TODO: get search paths from QSettings
 	profile_dialog = gui.ProfileSelectDialog(['./profiles'])

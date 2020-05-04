@@ -1,3 +1,4 @@
+import logging
 import types as _types
 import typing
 
@@ -41,6 +42,10 @@ def always_run(interval=1):
 def on_message(slot):
 	chattyboi.delayed_connect_slots['on_message'].append(slot)
 	return slot
+
+
+def log(message, level='INFO'):
+	chattyboi.logger.log(getattr(logging, level.upper()), message)
 
 
 def add_extension_alias(identifier, name):

@@ -7,6 +7,7 @@ from PySide2.QtWidgets import (
 	QWidget, QHBoxLayout, QVBoxLayout, QMainWindow, QDialog, QListView, QPushButton, QTabWidget, QSizePolicy
 )
 
+import profiles
 from . import widgets
 
 
@@ -25,7 +26,7 @@ class ProfileSelectDialog(QDialog):
 			if (profile / 'profile.json').is_file()
 		]
 
-		self.profileListModel.setStringList([path.name for path in self.profile_paths])
+		self.profileListModel.setStringList([profiles.Profile(path).name for path in self.profile_paths])
 		self.profileListView.setModel(self.profileListModel)
 		self.profileListView.setSelectionMode(QListView.SingleSelection)
 		self.layout().addWidget(self.profileListView)
@@ -34,6 +35,7 @@ class ProfileSelectDialog(QDialog):
 		self.cancel_button.clicked.connect(self.reject)
 		self.confirm_button.clicked.connect(self.accept)
 		self.setWindowTitle('Select Profile')
+		self.resize(350, 300)
 
 	def get_selected_path(self) -> pathlib.Path:
 		return self.profile_paths[self.profileListView.currentIndex().row()]
