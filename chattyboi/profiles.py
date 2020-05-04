@@ -35,12 +35,12 @@ class Profile:
 		self.properties: dict = None
 		self.connection: sqlite3.Connection = None
 		self.database_path = self.path / self.DATABASE_FILENAME
-		self.extension_data_dir = pathlib.Path(self.path / self.EXTENSION_DATA_DIRECTORY)
+		self.extension_data_path = pathlib.Path(self.path / self.EXTENSION_DATA_DIRECTORY)
 		self.load_properties()
 
 	def initialize(self):
-		if not self.extension_data_dir.is_dir():
-			self.extension_data_dir.mkdir(parents=True)
+		if not self.extension_data_path.is_dir():
+			self.extension_data_path.mkdir(parents=True)
 		self.connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME))
 		self.connection.cursor().execute(
 			'CREATE TABLE IF NOT EXISTS user_info ('

@@ -11,7 +11,7 @@ import json
 import pathlib
 import sys
 import sqlite3
-from typing import List, Union, Tuple, Deque, Optional
+from typing import List, Union, Tuple, Deque, Optional, Any
 
 import qasync
 import toml
@@ -98,8 +98,8 @@ class ExtensionHelper:
 		return metadata
 
 	@staticmethod
-	def get_hash(metadata):
-		return hashlib.md5(bytes(metadata["source"], "utf-8")).hexdigest()
+	def get_hash(source):
+		return hashlib.md5(bytes(source, "utf-8")).hexdigest()
 
 	@staticmethod
 	def load_order(extensions: List[Tuple[pathlib.Path, dict]]) -> List[pathlib.Path]:
@@ -132,7 +132,7 @@ class ExtensionHelper:
 		self.state = state
 
 	def load(self, path, metadata, module_name=None):
-		module_name = module_name or 'cbextension' + self.get_hash(metadata)
+		module_name = module_name or 'extension_' + self.get_hash(metadata['source'])
 		spec = importlib.util.spec_from_file_location(module_name, path / '__init__.py')
 		module = importlib.util.module_from_spec(spec)
 		sys.modules[module_name] = module
@@ -230,6 +230,11 @@ class User(QObject):
 		self.database = database
 		self.rowid = rowid
 
+	def __str__(self):
+		if self.exists():
+			return self.name
+		return '[Non-existing User]'
+
 	def exists(self):
 		c = self.database.cursor()
 		c.execute('SELECT rowid FROM user_info WHERE rowid = ?', (self.rowid,))
@@ -291,6 +296,9 @@ class Message(QObject):
 		self.content = content
 		self.timestamp = timestamp or datetime.datetime.now().timestamp()
 
+	def __str__(self):
+		return self.content
+
 
 class Chat(QObject):
 	messageReceived = Signal(Message)
@@ -299,6 +307,9 @@ class Chat(QObject):
 		super().__init__(None)
 		self.messages: Deque[Message] = collections.deque()
 
+	def __str__(self):
+		return 'Unknown'
+
 	def new_message(self, author, content):
 		message = Message(self, author, content)
 		self.messages.append(message)
@@ -306,7 +317,7 @@ class Chat(QObject):
 		return message
 
 	async def send(self, content):
-		pass
+		state.state.anyMessageSent.emit(content)
 
 
 class ApplicationState(QObject):
@@ -323,6 +334,7 @@ class ApplicationState(QObject):
 	"""
 	ready = Signal()
 	anyMessageReceived = Signal(Message)
+	anyMessageSent = Signal(str)
 
 	@classmethod
 	def default(cls):
@@ -358,7 +370,7 @@ class ApplicationState(QObject):
 		return next(ext for ext in self.extensions if ext.module is module)
 
 
-delayed_connect_event_slots = {
+delayed_connect_slots = {
 	'on_ready': [],
 	'always_run': [],
 	'on_message': [],
@@ -380,17 +392,17 @@ def run_default():
 		profile.initialize()
 		state.state.profile = profile
 		_state.extension_helper.load_all()
-		for slot in delayed_connect_event_slots['on_ready']:
+		for slot in delayed_connect_slots['on_ready']:
 			_state.ready.connect(slot)
-		for slot in [profile.cleanup] + delayed_connect_event_slots['on_cleanup']:
+		for slot in [profile.cleanup] + delayed_connect_slots['on_cleanup']:
 			app.aboutToQuit.connect(slot)
 
-		_state.main_window = gui.MainWindow()
+		_state.main_window = gui.MainWindow(_state)
 		_state.main_window.show()
 		_state.ready.emit()
-		for slot in delayed_connect_event_slots['on_message']:
+		for slot in delayed_connect_slots['on_message']:
 			_state.anyMessageReceived.connect(slot)
-		for coro, interval in delayed_connect_event_slots['always_run']:
+		for coro, interval in delayed_connect_slots['always_run']:
 			async def repeat():
 				while loop.is_running():
 					await coro()

@@ -7,6 +7,8 @@ from PySide2.QtWidgets import (
 	QWidget, QHBoxLayout, QVBoxLayout, QMainWindow, QDialog, QListView, QPushButton, QTabWidget, QSizePolicy
 )
 
+from . import widgets
+
 
 class ProfileSelectDialog(QDialog):
 	def __init__(self, search_paths: List[Union[str, pathlib.Path]], *args, **kwargs):
@@ -38,5 +40,13 @@ class ProfileSelectDialog(QDialog):
 
 
 class MainWindow(QMainWindow):
-	def __init__(self, *args, **kwargs):
+	def __init__(self, state, *args, **kwargs):
 		super().__init__(*args, **kwargs)
+		self.tabWidget = QTabWidget()
+		self.dashboard = widgets.DashboardTab(state)
+		self.tabWidget.addTab(self.dashboard, 'Dashboard')
+		self.setCentralWidget(self.tabWidget)
+
+		self.setWindowTitle('ChattyBoi')
+		self.setMinimumSize(400, 200)
+		self.resize(700, 500)

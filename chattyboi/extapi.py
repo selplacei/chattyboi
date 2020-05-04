@@ -28,25 +28,25 @@ def state():
 
 
 def on_ready(slot):
-	chattyboi.delayed_connect_event_slots['on_ready'].append(slot)
+	chattyboi.delayed_connect_slots['on_ready'].append(slot)
 
 
 def always_run(interval=1):
 	def wrapper(coro):
-		chattyboi.delayed_connect_event_slots['always_run'].append((coro, interval))
+		chattyboi.delayed_connect_slots['always_run'].append((coro, interval))
 		return coro
 	return wrapper
 
 
 def on_message(slot):
-	chattyboi.delayed_connect_event_slots['on_message'].append(slot)
+	chattyboi.delayed_connect_slots['on_message'].append(slot)
 	return slot
 
 
-def add_extension_alias(source, name):
-	extension = get_extension(source)
+def add_extension_alias(identifier, name):
+	extension = get_extension(identifier)
 	if extension is None:
-		raise ValueError(f'The extension [{source}] does not exist')
+		raise ValueError(f'The extension [{identifier}] does not exist')
 	if (test_duplicate := get_extension(name)) and test_duplicate != extension:
 		raise ValueError(f'An extension with the name or alias {name} already exists')
 	extension.add_alias(name)
@@ -61,6 +61,10 @@ def get_extension(identifier: str) -> typing.Optional[Extension]:
 	:returns: Extension object if found, None otherwise
 	"""
 	return next((candidate for candidate in state().extensions if identifier in candidate.aliases), None)
+
+
+def get_data_path(extension):
+	return state().profile.extension_data_path / chattyboi.ExtensionHelper.get_hash(extension.source)
 
 
 def register_chat(chat: Chat):
