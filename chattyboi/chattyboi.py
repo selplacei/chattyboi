@@ -333,6 +333,7 @@ class ApplicationState(QObject):
 		* the main window.
 	"""
 	ready = Signal()
+	chatAdded = Signal(Chat)
 	anyMessageReceived = Signal(Message)
 	anyMessageSent = Signal(str)
 
@@ -348,7 +349,7 @@ class ApplicationState(QObject):
 		self.properties = properties
 		self.extensions: List[Extension] = extensions or []
 		self.extension_helper = ExtensionHelper(self)
-		self.chats = chats or set()
+		self.chats = chats or []
 		self.main_window = main_window
 
 	@property
@@ -368,6 +369,11 @@ class ApplicationState(QObject):
 
 	def find_extension_by_module(self, module):
 		return next(ext for ext in self.extensions if ext.module is module)
+
+	def add_chat(self, chat):
+		self.chats.append(chat)
+		chat.messageReceived.connect(self.anyMessageReceived)
+		self.chatAdded.emit(chat)
 
 
 delayed_connect_slots = {

@@ -68,5 +68,4 @@ def get_data_path(extension):
 
 
 def register_chat(chat: Chat):
-	state().chats.add(chat)
-	chat.messageReceived.connect(state().anyMessageReceived.emit)
+	state().add_chat(chat)

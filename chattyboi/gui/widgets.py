@@ -1,10 +1,11 @@
+import asyncio
 import datetime
 
 
 from PySide2.QtCore import Qt
 from PySide2.QtWidgets import (
 	QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QPlainTextEdit, QLineEdit,
-	QSizePolicy
+	QSizePolicy, QComboBox, QPushButton
 )
 
 
@@ -42,7 +43,8 @@ class DashboardChatView(QTableWidget):
 
 	def resizeEvent(self, event):
 		# Set the width of the last section to fill the available space, unless that is smaller than its contents,
-		# in which case that will become the size, and a horizontal scrollbar will appear.
+		# in which case the section will be as wide as needed to display everything.
+		# https://stackoverflow.com/a/47834343/4434353
 		self.horizontalHeader().resizeSection(3, max(
 			self.sizeHintForColumn(3),
 			self.viewport().size().width() - sum(self.horizontalHeader().sectionSize(i) for i in range(3))
@@ -64,6 +66,28 @@ class DashboardMessageSender(QWidget):
 	def __init__(self, state, parent=None):
 		super().__init__(parent)
 		self.state = state
+		self.comboBox = QComboBox()
+		self.lineEdit = QLineEdit()
+
+		self.state.chatAdded.connect(self.update_chat_list)
+		self.lineEdit.editingFinished.connect(self.send)
+		layout = QHBoxLayout()
+		layout.setContentsMargins(0, layout.contentsMargins().top(), 0, layout.contentsMargins().bottom())
+		layout.addWidget(self.comboBox)
+		layout.addWidget(self.lineEdit)
+		self.setLayout(layout)
+
+	def update_chat_list(self):
+		self.comboBox.model().clear()
+		self.comboBox.addItems(str(chat) for chat in self.state.chats)
+
+	def selected_chat(self):
+		return self.state.chats[self.comboBox.currentIndex()]
+
+	def send(self):
+		if content := self.lineEdit.text():
+			asyncio.get_event_loop().create_task(self.selected_chat().send(content))
+			self.lineEdit.setText('')
 
 
 class DashboardLogWidget(QPlainTextEdit):
@@ -80,3 +104,8 @@ class DashboardShortcutWidget(QWidget):
 	def __init__(self, state, parent=None):
 		super().__init__(parent)
 		self.state = state
+		layout = QHBoxLayout()
+		layout.addWidget(QPushButton('Shortcut 1'))
+		layout.addWidget(QPushButton('Shortcut 2'))
+		layout.setMargin(0)
+		self.setLayout(layout)
