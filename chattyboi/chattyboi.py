@@ -12,11 +12,11 @@ import logging
 import pathlib
 import sys
 import sqlite3
-from typing import List, Union, Tuple, Deque, Optional, Any
+from typing import List, Dict, Union, Tuple, Deque, Optional
 
 import qasync
 import toml
-from PySide2.QtCore import Signal, QObject
+from PySide2.QtCore import Signal, QObject, QSettings
 from PySide2.QtWidgets import QApplication
 
 import config
@@ -356,17 +356,17 @@ class ApplicationState(QObject):
 	def __init__(self, properties, logger, profile=None, extensions=None, chats=None, main_window=None):
 		super().__init__(None)
 		self._profile = profile
-		self.properties = properties
-		self.logger = logger
+		self.properties: Dict[str, QSettings] = properties
+		self.logger: logging.Logger = logger
 		self.extensions: List[Extension] = extensions or []
-		self.chats = chats or []
-		self.main_window = main_window
-		self.start_time = None
+		self.chats: List[Chat] = chats or []
+		self.main_window: gui.windows.MainWindow = main_window
+		self.start_time: datetime.datetime = None
 		self.extension_helper = ExtensionHelper(self)
 		self.ready.connect(self._on_ready)
 
 	@property
-	def profile(self):
+	def profile(self) -> profiles.Profile:
 		return self._profile
 
 	@profile.setter
@@ -377,17 +377,17 @@ class ApplicationState(QObject):
 			raise AttributeError('The profile cannot be changed after it has been set.')
 
 	@property
-	def database(self):
+	def database(self) -> DatabaseWrapper:
 		return self.profile.get_database_wrapper()
 
 	def _on_ready(self):
 		self.start_time = datetime.datetime.now()
 
 	@property
-	def uptime(self):
+	def uptime(self) -> datetime.timedelta:
 		return datetime.datetime.now() - self.start_time
 
-	def find_extension_by_module(self, module):
+	def find_extension_by_module(self, module) -> Extension:
 		return next(ext for ext in self.extensions if ext.module is module)
 
 	def add_chat(self, chat):
