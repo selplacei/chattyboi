@@ -6,7 +6,7 @@ import logging
 from PySide2.QtCore import Qt, QTimer
 from PySide2.QtWidgets import (
 	QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QPlainTextEdit, QLineEdit,
-	QSizePolicy, QComboBox, QPushButton, QLabel
+	QSizePolicy, QComboBox, QPushButton, QLabel, QStackedWidget
 )
 
 import config
@@ -17,22 +17,27 @@ class DashboardTab(QWidget):
 		super().__init__(parent)
 		self.chatView = DashboardChatView(state)
 		self.messageSender = DashboardMessageSender(state)
-		self.logWidget = DashboardLogWidget(state)
+		self.statusWidget = DashboardStatusWidget(state)
 		self.shortcutWidget = DashboardShortcutWidget(state)
+		self.customWidgetManager = DashboardCustomWidgetManager(state)
 
 		rootLayout = QHBoxLayout()
-		leftWidget = QWidget()
-		rightWidget = QWidget()
-		leftWidget.setLayout(QVBoxLayout())
-		rightWidget.setLayout(QVBoxLayout())
-		leftWidget.layout().addWidget(self.chatView)
-		leftWidget.layout().addWidget(self.messageSender)
-		rightWidget.layout().addWidget(self.logWidget)
-		rightWidget.layout().addWidget(self.shortcutWidget)
-		rootLayout.addWidget(leftWidget)
-		rootLayout.addWidget(rightWidget)
+		self.leftWidget = QWidget()
+		self.rightWidget = QWidget()
+		self.leftWidget.setLayout(QVBoxLayout())
+		self.rightWidget.setLayout(QVBoxLayout())
+		self.leftWidget.layout().addWidget(self.chatView)
+		self.leftWidget.layout().addWidget(self.messageSender)
+		self.rightWidget.layout().addWidget(self.customWidgetManager)
+		self.rightWidget.layout().addWidget(self.shortcutWidget)
+		self.customWidgetManager.add_widget('Status', self.statusWidget)
+		rootLayout.addWidget(self.leftWidget)
+		rootLayout.addWidget(self.rightWidget)
 
 		self.setLayout(rootLayout)
+
+	def addCustomWidget(self, title, widget: QWidget):
+		self.customWidgetManager.add_widget(title, widget)
 
 
 class DashboardChatView(QTableWidget):
@@ -95,7 +100,61 @@ class DashboardMessageSender(QWidget):
 			self.lineEdit.setText('')
 
 
-class DashboardLogWidget(QWidget):
+class DashboardCustomWidgetManager(QWidget):
+	def __init__(self, status, parent=None):
+		super().__init__(parent)
+		self.status = status
+		self.stackedWidget = QStackedWidget()
+		self.pageSwitcher = QWidget()
+		self.leftButton = QPushButton('<-')
+		self.rightButton = QPushButton('->')
+		self.comboBox = QComboBox()
+
+		rootLayout = QVBoxLayout()
+		switcherLayout = QHBoxLayout()
+		switcherLayout.addWidget(self.leftButton)
+		switcherLayout.addWidget(self.comboBox)
+		switcherLayout.addWidget(self.rightButton)
+		self.pageSwitcher.setLayout(switcherLayout)
+		rootLayout.addWidget(self.stackedWidget)
+		rootLayout.addWidget(self.pageSwitcher)
+		switcherLayout.setMargin(0)
+		rootLayout.setMargin(0)
+		self.setLayout(rootLayout)
+
+		self.comboBox.currentIndexChanged.connect(self.stackedWidget.setCurrentIndex)
+		self.comboBox.currentIndexChanged.connect(self.update_buttons)
+		self.leftButton.clicked.connect(self.go_left)
+		self.rightButton.clicked.connect(self.go_right)
+		self.update_buttons()
+
+	def add_widget(self, title, widget):
+		self.stackedWidget.addWidget(widget)
+		self.comboBox.addItem(title)
+		self.update_buttons()
+
+	def currentWidget(self):
+		return self.stackedWidget.currentWidget()
+
+	def update_buttons(self):
+		index = self.stackedWidget.currentIndex()
+		self.leftButton.setEnabled(index > 0)
+		self.rightButton.setEnabled(index < self.stackedWidget.count() - 1)
+
+	def go_left(self):
+		index = self.stackedWidget.currentIndex()
+		if index > 0:
+			self.stackedWidget.setCurrentIndex(index - 1)
+		self.update_buttons()
+
+	def go_right(self):
+		index = self.stackedWidget.currentIndex()
+		if index < self.stackedWidget.count() - 1:
+			self.stackedWidget.setCurrentIndex(index + 1)
+		self.update_buttons()
+
+
+class DashboardStatusWidget(QWidget):
 	class Handler(logging.Handler):
 		def __init__(self, widget):
 			super().__init__()
@@ -115,7 +174,7 @@ class DashboardLogWidget(QWidget):
 		self.state = state
 		self.log_level_indices = {logging.DEBUG: 0, logging.INFO: 1, logging.WARNING: 2}
 		self._records = []
-		self.handler = DashboardLogWidget.Handler(self)
+		self.handler = DashboardStatusWidget.Handler(self)
 		self.state.logger.addHandler(self.handler)
 
 		self.plainTextEdit = QPlainTextEdit()
