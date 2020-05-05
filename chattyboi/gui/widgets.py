@@ -5,8 +5,8 @@ import logging
 
 from PySide2.QtCore import Qt, QTimer
 from PySide2.QtWidgets import (
-	QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QPlainTextEdit, QLineEdit,
-	QSizePolicy, QComboBox, QPushButton, QLabel, QStackedWidget
+	QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QTableWidgetItem, QPlainTextEdit, QLineEdit,
+	QSizePolicy, QComboBox, QPushButton, QLabel, QStackedWidget, QAbstractItemView, QAbstractScrollArea
 )
 
 import config
@@ -17,20 +17,22 @@ class DashboardChatView(QTableWidget):
 		super().__init__(0, 4, parent)
 		self.horizontalHeader().hide()
 		self.verticalHeader().hide()
-		self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-		self.resizeColumnsToContents()
+		self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
 		state.anyMessageReceived.connect(self.add_message)
 
-	def resizeEvent(self, event):
+	def viewportEvent(self, event):
 		# Set the width of the last section to fill the available space, unless that is smaller than its contents,
 		# in which case the section will be as wide as needed to display everything.
 		# https://stackoverflow.com/a/47834343/4434353
 		self.resizeColumnsToContents()
 		self.resizeRowsToContents()
+		minimum_width = sum(self.horizontalHeader().sectionSize(i) for i in range(3))
+		self.setMinimumWidth(minimum_width)
 		self.horizontalHeader().resizeSection(3, max(
 			self.sizeHintForColumn(3),
-			self.viewport().size().width() - sum(self.horizontalHeader().sectionSize(i) for i in range(3))
-		))
+			self.viewport().size().width() - minimum_width)
+		)
+		return super().viewportEvent(event)
 
 	def add_message(self, message):
 		index = self.rowCount()

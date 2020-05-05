@@ -1,4 +1,4 @@
-from PySide2.QtWidgets import QWidget
+from PySide2.QtWidgets import QWidget, QSplitter, QBoxLayout
 
 from .widgets import *
 
@@ -12,7 +12,7 @@ class Dashboard(QWidget):
 		self.shortcutWidget = DashboardShortcutWidget(state)
 		self.customWidgetManager = DashboardCustomWidgetManager(state)
 
-		rootLayout = QHBoxLayout()
+		splitter = QSplitter()
 		self.leftWidget = QWidget()
 		self.rightWidget = QWidget()
 		self.leftWidget.setLayout(QVBoxLayout())
@@ -22,10 +22,19 @@ class Dashboard(QWidget):
 		self.rightWidget.layout().addWidget(self.customWidgetManager)
 		self.rightWidget.layout().addWidget(self.shortcutWidget)
 		self.customWidgetManager.add_widget('Status', self.statusWidget)
-		rootLayout.addWidget(self.leftWidget)
-		rootLayout.addWidget(self.rightWidget)
-
-		self.setLayout(rootLayout)
+		splitter.addWidget(self.leftWidget)
+		splitter.addWidget(self.rightWidget)
+		self.setLayout(QVBoxLayout())
+		self.layout().addWidget(splitter)
 
 	def addCustomWidget(self, title, widget: QWidget):
 		self.customWidgetManager.add_widget(title, widget)
+
+
+class DatabaseViewer(QWidget):
+	# https://doc.qt.io/qt-5/qsqlrelationaltablemodel.html
+	def __init__(self, state, parent=None):
+		super().__init__(parent)
+		self.state = state
+		self.setLayout(QHBoxLayout())
+		self.layout().addWidget(QLabel('TBD'))
