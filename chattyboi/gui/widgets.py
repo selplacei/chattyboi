@@ -6,25 +6,26 @@ import logging
 from PySide2.QtCore import Qt, QTimer
 from PySide2.QtWidgets import (
 	QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QTableWidgetItem, QPlainTextEdit, QLineEdit,
-	QSizePolicy, QComboBox, QPushButton, QLabel, QStackedWidget, QAbstractItemView, QAbstractScrollArea
+	QSizePolicy, QComboBox, QPushButton, QLabel, QStackedWidget, QAbstractItemView, QCheckBox
 )
-
-import config
+from PySide2.QtGui import QTextOption
 
 
 class DashboardChatView(QTableWidget):
 	def __init__(self, state, parent=None):
 		super().__init__(0, 4, parent)
-		self.horizontalHeader().hide()
+		self.setHorizontalHeaderLabels(['Time', 'Chat', 'Author', 'Message'])
 		self.verticalHeader().hide()
 		self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+		self.setWordWrap(False)
+		for i in range(3):
+			self.horizontalHeader().resizeSection(i, self.horizontalHeader().sectionSizeHint(i) + 20)
 		state.anyMessageReceived.connect(self.add_message)
 
 	def viewportEvent(self, event):
 		# Set the width of the last section to fill the available space, unless that is smaller than its contents,
 		# in which case the section will be as wide as needed to display everything.
 		# https://stackoverflow.com/a/47834343/4434353
-		self.resizeColumnsToContents()
 		self.resizeRowsToContents()
 		minimum_width = sum(self.horizontalHeader().sectionSize(i) for i in range(3))
 		self.setMinimumWidth(minimum_width)
@@ -42,7 +43,8 @@ class DashboardChatView(QTableWidget):
 		self.setItem(index, 2, QTableWidgetItem(str(message.author)))
 		self.setItem(index, 3, QTableWidgetItem(str(message.content)))
 		for i in range(4):
-			self.item(index, i).setFlags(~Qt.ItemIsSelectable & ~Qt.ItemIsEditable)
+			self.item(index, i).setFlags(~Qt.ItemIsEditable)
+		self.resizeColumnToContents(3)
 		self.updateGeometry()
 
 
@@ -137,9 +139,7 @@ class DashboardStatusWidget(QWidget):
 		def __init__(self, widget):
 			super().__init__()
 			self.widget = widget
-			self.setFormatter(
-				logging.Formatter(config.log_format.replace('%(name)s:', ''), datefmt=config.log_datefmt)
-			)
+			self.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%H:%M'))
 
 		def emit(self, record):
 			self.widget.records.append(record)
@@ -155,31 +155,47 @@ class DashboardStatusWidget(QWidget):
 		self.state.logger.addHandler(self.handler)
 
 		self.plainTextEdit = QPlainTextEdit()
-		self.leftLabel = QLabel('Show:')
 		self.logLevelSelector = QComboBox()
+		self.checkboxContainer = QWidget()
+		self.wordWrapLabel = QLabel('Word wrap:')
+		self.wordWrapCheckbox = QCheckBox()
+		self.leftLabel = QLabel('Show:')
 		self.statusLabel = QLabel()
 		self.statusTimer = QTimer()
 
 		root_layout = QVBoxLayout()
 		top_layout = QHBoxLayout()
+		bottom_layout = QHBoxLayout()
 		top_layout.addWidget(self.leftLabel)
 		top_layout.addWidget(self.logLevelSelector)
 		top_layout.addWidget(self.statusLabel)
 		top_layout.setMargin(0)
+		bottom_layout.addWidget(self.wordWrapLabel)
+		bottom_layout.addWidget(self.wordWrapCheckbox)
+		bottom_layout.setMargin(0)
 		top_widget = QWidget()
 		top_widget.setLayout(top_layout)
+		bottom_widget = QWidget()
+		bottom_widget.setLayout(bottom_layout)
 		root_layout.addWidget(top_widget)
 		root_layout.addWidget(self.plainTextEdit)
+		root_layout.addWidget(bottom_widget)
 		root_layout.setMargin(0)
 
 		self.setLayout(root_layout)
 		self.statusTimer.timeout.connect(self.update_status)
 		self.leftLabel.setFixedWidth(self.leftLabel.sizeHint().width())
+		self.wordWrapLabel.setFixedWidth(self.wordWrapLabel.sizeHint().width())
 		self.logLevelSelector.addItems(['Debug', 'Info', 'Warnings'])
 		self.logLevelSelector.setCurrentIndex(self.log_level_indices.get(self.state.logger.getEffectiveLevel(), 2))
 		self.logLevelSelector.currentIndexChanged.connect(self.update_log_level)
 		self.plainTextEdit.setReadOnly(True)
-		self.plainTextEdit.setLineWrapMode(QPlainTextEdit.NoWrap)
+		self.plainTextEdit.setWordWrapMode(QTextOption.NoWrap)
+		self.wordWrapCheckbox.stateChanged.connect(lambda s: self.plainTextEdit.setWordWrapMode(
+			QTextOption.WrapAtWordBoundaryOrAnywhere if s == 2 else QTextOption.NoWrap
+		))
+		self.wordWrapCheckbox.stateChanged.connect(self.plainTextEdit.repaint)
+		self.state.ready.connect(self.update_log_level)
 		self.state.ready.connect(lambda: self.statusTimer.start(1000))
 		self.state.ready.connect(self.update_status)
 
@@ -187,6 +203,7 @@ class DashboardStatusWidget(QWidget):
 		return self.log_level_indices.get(record.levelno, 3) >= self.logLevelSelector.currentIndex()
 
 	def update_log_level(self):
+		self.plainTextEdit.horizontalScrollBar().setValue(0)
 		self.plainTextEdit.setPlainText('\n'.join(
 			self.handler.format(record) for record in self.records if self.should_display_record(record)
 		))

@@ -50,7 +50,6 @@ class MainWindow(QMainWindow):
 		self.tabWidget.addTab(self.dashboard, 'Dashboard')
 		self.tabWidget.addTab(self.databaseViewer, 'Database')
 		self.setCentralWidget(self.tabWidget)
-
 		self.setWindowTitle('ChattyBoi')
 		self.setMinimumSize(400, 200)
 		self.resize(700, 500)

@@ -2,6 +2,8 @@ import logging
 import types as _types
 import typing
 
+import qasync
+
 import chattyboi
 import config
 import gui
@@ -10,6 +12,7 @@ import state as _state
 import utils
 
 
+async_slot = qasync.asyncSlot
 Extension = chattyboi.Extension
 User = chattyboi.User
 Message = chattyboi.Message
@@ -41,6 +44,11 @@ def always_run(interval=1):
 
 def on_message(slot):
 	chattyboi.delayed_connect_slots['on_message'].append(slot)
+	return slot
+
+
+def on_cleanup(slot):
+	chattyboi.delayed_connect_slots['on_cleanup'].append(slot)
 	return slot
 
 
