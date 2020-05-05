@@ -192,17 +192,17 @@ class DatabaseWrapper:
 		If any of the nicknames already exist, this will raise a ValueError.
 		"""
 		for nickname in nicknames:
-			if self.user_by_name(nickname):
+			if self.find_user(nickname):
 				raise ValueError(f'A user with the nickname "{nickname}" already exists')
 		self.cursor().execute(
 			'INSERT INTO user_info (nicknames, created_on, extension_data) '
 			'VALUES (?, ?, ?)',
 			# TODO: generate default extension data instead of an empty dict
-			('\n'.join(nicknames) + '\n', utils.utc_timestamp(), json.dumps(extension_data or {}))
+			(json.dumps(nicknames), utils.utc_timestamp(), json.dumps(extension_data or {}))
 		)
 		return int(self.cursor().execute('SELECT last_insert_rowid()').fetchone()[0])
 
-	def user_by_name(self, nickname: str) -> Optional[User]:
+	def find_user(self, nickname: str) -> Optional[User]:
 		"""
 		Find and return a User object whose `nicknames` entry in the database matches the given nickname.
 		If no user was found, None will be returned.
@@ -210,7 +210,7 @@ class DatabaseWrapper:
 		# self.cursor().execute('SELECT rowid FROM user_info WHERE nicknames LIKE ?', (f'"%self\n%"',))
 		# print(self.cursor().fetchall())
 		c = self.cursor()
-		c.execute('SELECT rowid FROM user_info WHERE nicknames LIKE ?', (f'{nickname}\n',))
+		c.execute('SELECT rowid FROM user_info WHERE nicknames LIKE ?', (f'%"{nickname}"%',))
 		try:
 			rowid = c.fetchone()[0]
 			return User(self, rowid)
@@ -218,7 +218,7 @@ class DatabaseWrapper:
 			return None
 
 	def find_or_add_user(self, nickname, extension_data: Union[str, dict] = None):
-		return self.user_by_name(nickname) or User(self, self.add_user([nickname], extension_data))
+		return self.find_user(nickname) or User(self, self.add_user([nickname], extension_data))
 
 
 class User(QObject):
@@ -257,13 +257,13 @@ class User(QObject):
 	def nicknames(self):
 		c = self.database.cursor()
 		c.execute('SELECT nicknames FROM user_info WHERE rowid = ?', (self.rowid,))
-		return tuple(c.fetchone()[0].strip('\n').split('\n'))
+		return json.loads(c.fetchone()[0])
 
 	@nicknames.setter
 	def nicknames(self, value):
 		self.database.cursor().execute(
 			'UPDATE user_info SET nicknames = ? WHERE rowid = ?',
-			('\n'.join(value) + '\n', self.rowid)
+			(json.dumps(value), self.rowid)
 		)
 
 	@property
