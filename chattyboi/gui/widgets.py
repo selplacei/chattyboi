@@ -43,7 +43,7 @@ class DashboardChatView(QTableWidget):
 		self.setItem(index, 3, QTableWidgetItem(str(message.content)))
 		for i in range(4):
 			self.item(index, i).setFlags(~Qt.ItemIsSelectable & ~Qt.ItemIsEditable)
-		self.resizeEvent(None)
+		self.updateGeometry()
 
 
 class DashboardMessageSender(QWidget):
