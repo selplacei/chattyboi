@@ -24,6 +24,8 @@ class Dashboard(QWidget):
 		self.customWidgetManager.add_widget('Status', self.statusWidget)
 		splitter.addWidget(self.leftWidget)
 		splitter.addWidget(self.rightWidget)
+		splitter.setStretchFactor(0, 2)
+		splitter.setCollapsible(1, False)
 		self.setLayout(QVBoxLayout())
 		self.layout().addWidget(splitter)
 

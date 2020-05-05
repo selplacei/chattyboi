@@ -94,6 +94,7 @@ class DashboardCustomWidgetManager(QWidget):
 		rootLayout.addWidget(self.pageSwitcher)
 		switcherLayout.setMargin(0)
 		rootLayout.setMargin(0)
+		self.comboBox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 		self.setLayout(rootLayout)
 
 		self.comboBox.currentIndexChanged.connect(self.stackedWidget.setCurrentIndex)
@@ -101,6 +102,9 @@ class DashboardCustomWidgetManager(QWidget):
 		self.leftButton.clicked.connect(self.go_left)
 		self.rightButton.clicked.connect(self.go_right)
 		self.update_buttons()
+
+	def sizeHint(self):
+		return self.minimumSizeHint()
 
 	def add_widget(self, title, widget):
 		self.stackedWidget.addWidget(widget)
@@ -133,21 +137,20 @@ class DashboardStatusWidget(QWidget):
 		def __init__(self, widget):
 			super().__init__()
 			self.widget = widget
-			self.records = []
 			self.setFormatter(
 				logging.Formatter(config.log_format.replace('%(name)s:', ''), datefmt=config.log_datefmt)
 			)
 
 		def emit(self, record):
-			self.records.append(record)
-			if self.widget.record_should_be_displayed(record):
+			self.widget.records.append(record)
+			if self.widget.should_display_record(record):
 				self.widget.add_message(self.format(record))
 
 	def __init__(self, state, parent=None):
 		super().__init__(parent)
 		self.state = state
 		self.log_level_indices = {logging.DEBUG: 0, logging.INFO: 1, logging.WARNING: 2}
-		self._records = []
+		self.records = []
 		self.handler = DashboardStatusWidget.Handler(self)
 		self.state.logger.addHandler(self.handler)
 
@@ -171,35 +174,37 @@ class DashboardStatusWidget(QWidget):
 
 		self.setLayout(root_layout)
 		self.statusTimer.timeout.connect(self.update_status)
-		self.statusTimer.start(1000)
 		self.leftLabel.setFixedWidth(self.leftLabel.sizeHint().width())
 		self.logLevelSelector.addItems(['Debug', 'Info', 'Warnings'])
 		self.logLevelSelector.setCurrentIndex(self.log_level_indices.get(self.state.logger.getEffectiveLevel(), 2))
 		self.logLevelSelector.currentIndexChanged.connect(self.update_log_level)
+		self.plainTextEdit.setReadOnly(True)
+		self.state.ready.connect(lambda: self.statusTimer.start(1000))
 		self.state.ready.connect(self.update_status)
 
-	def record_should_be_displayed(self, record):
+	def should_display_record(self, record):
 		return self.log_level_indices[record.levelno] >= self.logLevelSelector.currentIndex()
 
 	def update_log_level(self):
 		self.plainTextEdit.setPlainText('\n'.join(
-			self.handler.format(record) for record in self.handler.records if self.record_should_be_displayed(record)
+			self.handler.format(record) for record in self.records if self.should_display_record(record)
 		))
 
 	def update_status(self):
-		uptime_seconds = self.state.uptime.seconds
-		uptime_text = 'Uptime: '
-		if uptime_seconds >= 86400:
-			uptime_text += f'{round(uptime_seconds / 86400)} days'
-		elif uptime_seconds >= 3600:
-			hours, remainder = divmod(uptime_seconds, 3600)
-			uptime_text += f'{hours}h {remainder / 60}m'
+		self.statusLabel.setText(self.uptime_text())
+
+	def uptime_text(self):
+		seconds = self.state.uptime.seconds
+		text = 'Uptime: '
+		if seconds >= 86400:
+			text += f'{round(seconds / 86400)} days'
+		elif seconds >= 3600:
+			hours, remainder = divmod(seconds, 3600)
+			text += f'{hours}h {remainder / 60}m'
 		else:
-			minutes, remainder = divmod(uptime_seconds, 60)
-			uptime_text += f'{minutes}m {round(remainder)}s'
-		self.statusLabel.setText(
-			f'Extensions: {len(self.state.extensions)} | {uptime_text}'
-		)
+			minutes, remainder = divmod(seconds, 60)
+			text += f'{minutes}m {round(remainder)}s'
+		return text
 
 	def add_message(self, text):
 		self.plainTextEdit.appendPlainText(text)
