@@ -8,7 +8,7 @@ from PySide2.QtWidgets import (
 )
 
 import profiles
-from . import widgets
+from . import tabs
 
 
 class ProfileSelectDialog(QDialog):
@@ -45,7 +45,7 @@ class MainWindow(QMainWindow):
 	def __init__(self, state, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.tabWidget = QTabWidget()
-		self.dashboard = widgets.DashboardTab(state)
+		self.dashboard = tabs.Dashboard(state)
 		self.tabWidget.addTab(self.dashboard, 'Dashboard')
 		self.setCentralWidget(self.tabWidget)
 
