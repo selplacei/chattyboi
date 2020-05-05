@@ -404,12 +404,20 @@ delayed_connect_slots = {
 }
 
 
+def handle_exception(loop, context):
+	if exception := context.get('exception', None):
+		logger.error('Unhandled exception in event loop', exc_info=exception)
+	else:
+		logger.error(context['message'])
+
+
 def run_default():
 	app = QApplication(sys.argv)
 	app.setApplicationName(config.qt_app_name)
 	app.setOrganizationName(config.qt_org_name)
 	loop = qasync.QEventLoop(app)
 	asyncio.set_event_loop(loop)
+	loop.set_exception_handler(handle_exception)
 
 	_state = state.state = ApplicationState.default()
 

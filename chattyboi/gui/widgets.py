@@ -42,7 +42,7 @@ class DashboardChatView(QTableWidget):
 		self.setItem(index, 2, QTableWidgetItem(str(message.author)))
 		self.setItem(index, 3, QTableWidgetItem(str(message.content)))
 		for i in range(4):
-			self.item(0, i).setFlags(~Qt.ItemIsSelectable & ~Qt.ItemIsEditable)
+			self.item(index, i).setFlags(~Qt.ItemIsSelectable & ~Qt.ItemIsEditable)
 		self.resizeEvent(None)
 
 
@@ -179,11 +179,12 @@ class DashboardStatusWidget(QWidget):
 		self.logLevelSelector.setCurrentIndex(self.log_level_indices.get(self.state.logger.getEffectiveLevel(), 2))
 		self.logLevelSelector.currentIndexChanged.connect(self.update_log_level)
 		self.plainTextEdit.setReadOnly(True)
+		self.plainTextEdit.setLineWrapMode(QPlainTextEdit.NoWrap)
 		self.state.ready.connect(lambda: self.statusTimer.start(1000))
 		self.state.ready.connect(self.update_status)
 
 	def should_display_record(self, record):
-		return self.log_level_indices[record.levelno] >= self.logLevelSelector.currentIndex()
+		return self.log_level_indices.get(record.levelno, 3) >= self.logLevelSelector.currentIndex()
 
 	def update_log_level(self):
 		self.plainTextEdit.setPlainText('\n'.join(
