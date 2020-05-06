@@ -56,7 +56,7 @@ class DashboardMessageSender(QWidget):
 		self.lineEdit = QLineEdit()
 
 		self.state.chatAdded.connect(self.update_chat_list)
-		self.lineEdit.editingFinished.connect(self.send)
+		self.lineEdit.returnPressed.connect(self.send)
 		layout = QHBoxLayout()
 		layout.setContentsMargins(0, layout.contentsMargins().top(), 0, layout.contentsMargins().bottom())
 		layout.addWidget(self.comboBox)
@@ -187,7 +187,7 @@ class DashboardStatusWidget(QWidget):
 		self.leftLabel.setFixedWidth(self.leftLabel.sizeHint().width())
 		self.wordWrapLabel.setFixedWidth(self.wordWrapLabel.sizeHint().width())
 		self.logLevelSelector.addItems(['Debug', 'Info', 'Warnings'])
-		self.logLevelSelector.setCurrentIndex(self.log_level_indices.get(self.state.logger.getEffectiveLevel(), 2))
+		self.logLevelSelector.setCurrentIndex(self.log_level_indices[logging.INFO])
 		self.logLevelSelector.currentIndexChanged.connect(self.update_log_level)
 		self.plainTextEdit.setReadOnly(True)
 		self.plainTextEdit.setWordWrapMode(QTextOption.NoWrap)
