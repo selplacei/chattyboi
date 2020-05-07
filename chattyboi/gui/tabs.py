@@ -36,13 +36,14 @@ class Dashboard(QWidget):
 		self.customWidgetManager.add_widget(title, widget)
 
 
-class DatabaseViewer(QWidget):
+class Database(QWidget):
 	# https://doc.qt.io/qt-5/qsqlrelationaltablemodel.html
 	def __init__(self, state, parent=None):
 		super().__init__(parent)
 		self.state = state
+		self.databaseEditor = DatabaseEditor(state)
 		self.setLayout(QHBoxLayout())
-		self.layout().addWidget(QLabel('TBD'))
+		self.layout().addWidget(self.databaseEditor)
 
 
 class About(QWidget):

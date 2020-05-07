@@ -20,7 +20,7 @@ In order to be useful as a chat bot, this application needs configuration. Some 
 - There doesn't have to be a "default chat", the users of which have to link their accounts to other chat platforms in order to use them.
 - There is a huge potential for the extension ecosystem, since extensions are essentially arbitrary code - they can be used for any purpose.
 
-Additionally, there already are **[WIP]** some nice extensions:
+Additionally, there already are **\[WIP]** some nice extensions:
 
 - Commands: the concepts of an "action" and a "trigger" are separated, and neither are tied to some limited set of functionality. In other words, commands can do anything; and, if needed, they can be executed in a variety of ways.
 - Moderation: user roles, tags, blacklisting, configurable defaults, integration with commands and statistics.

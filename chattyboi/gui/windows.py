@@ -46,7 +46,7 @@ class MainWindow(QMainWindow):
 		super().__init__(*args, **kwargs)
 		self.tabWidget = QTabWidget()
 		self.dashboard = tabs.Dashboard(state)
-		self.databaseViewer = tabs.DatabaseViewer(state)
+		self.databaseViewer = tabs.Database(state)
 		self.aboutPage = tabs.About(state)
 		self.tabWidget.addTab(self.dashboard, 'Dashboard')
 		self.tabWidget.addTab(self.databaseViewer, 'Database')

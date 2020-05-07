@@ -36,7 +36,7 @@ logger = logging.getLogger('chattyboi')
 class Extension:
 	"""
 	Information about a specific loaded extension.
-	This only represents the info about an extension; its module is imported separately,
+	This only represents the info about it; its module is imported separately,
 	and destroying this object will not unload the extension.
 
 	The following information can be retrieved using this class:
@@ -49,7 +49,7 @@ class Extension:
 	author: str
 	version: str
 	source: str
-	licence: str
+	license: str
 	summary: str
 	description: str
 	requires: List[str]
@@ -79,7 +79,7 @@ class ExtensionHelper:
 	"""
 	Helper class for managing extensions associated with a specific state.
 	To retrieve the list of needed extensions, the state's profile is used.
-	When extensions are loaded, the `extensions` list of the state is updated.
+	When extensions are loaded, the state's `extensions` list is updated.
 
 	The responsibilities of this class are as follows:
 		* finding extension packages from a profile's properties;
@@ -167,7 +167,7 @@ class ExtensionHelper:
 class DatabaseWrapper:
 	"""
 	Wrapper around a profile's SQLite3 database that provides ChattyBoi-specific helper functions.
-	The associated connection and cursor are stored in the `connection` and `cursor()` attributes.
+	Use `cursor()` to acquire a cursor to the database connection.
 	"""
 	SELF_NICKNAME = 'self'
 	cache = {}
@@ -207,8 +207,6 @@ class DatabaseWrapper:
 		Find and return a User object whose `nicknames` entry in the database matches the given nickname.
 		If no user was found, None will be returned.
 		"""
-		# self.cursor().execute('SELECT rowid FROM user_info WHERE nicknames LIKE ?', (f'"%self\n%"',))
-		# print(self.cursor().fetchall())
 		c = self.cursor()
 		c.execute('SELECT rowid FROM user_info WHERE nicknames LIKE ?', (f'%"{nickname}"%',))
 		try:
@@ -225,8 +223,7 @@ class User(QObject):
 	"""
 	A class that represents a single user's entry in the database.
 	All information is gathered from the `user_info` table, and the following columns are expected:
-		* nicknames: TEXT - newline-separated (\n) list of unique names that refer to this user,
-							where the first one is the preferred/default.
+		* nicknames: TEXT - JSON list of nicknames, where the first one is preferred.
 		* created_on: FLOAT - POSIX timestamp of the UTC time at which this entry was created.
 		* extension_data: TEXT - JSON object representing extension data. More info in `extapi.store_user_data`.
 	Initialized with a DatabaseWrapper and the SQLite3 rowid. If the row doesn't exist, an error is not raised;
@@ -293,8 +290,6 @@ class User(QObject):
 class Message(QObject):
 	"""
 	A class representing a single message.
-	Upon creation, if a source is specified, the message will be added to the message cache
-	and the `messageReceived` signal will be emitted.
 	A message with `None` as the source can be useful for testing, where the bot only needs
 	to react to a message without interacting with its author.
 	"""
@@ -310,6 +305,10 @@ class Message(QObject):
 
 
 class Chat(QObject):
+	"""
+	A class representing an API which can produce Message objects, and to which content can be sent.
+	When a new message is received, `new_message()` should be called.
+	"""
 	messageReceived = Signal(Message)
 
 	def __init__(self):
@@ -333,13 +332,14 @@ class ApplicationState(QObject):
 	"""
 	Data structure that describes a state of the ChattyBoi application.
 	The following information can be retrieved using this class:
+		* ChattyBoi's logger;
 		* the associated profile;
-		* properties, i.e. system and user scope QSettings;
 		* currently loaded extensions;
 		* associated ExtensionHelper;
 		* associated DatabaseWrapper;
 		* active chat streams;
-		* the main window.
+		* start time and uptime;
+		* the main GUI window.
 	"""
 	ready = Signal()
 	chatAdded = Signal(Chat)
@@ -349,14 +349,12 @@ class ApplicationState(QObject):
 	@classmethod
 	def default(cls):
 		return cls(
-			properties={'system': config.system_settings, 'user': config.user_settings},
 			logger=logger
 		)
 
-	def __init__(self, properties, logger, profile=None, extensions=None, chats=None, main_window=None):
+	def __init__(self, logger, profile=None, extensions=None, chats=None, main_window=None):
 		super().__init__(None)
 		self._profile = profile
-		self.properties: Dict[str, QSettings] = properties
 		self.logger: logging.Logger = logger
 		self.extensions: List[Extension] = extensions or []
 		self.chats: List[Chat] = chats or []
@@ -396,6 +394,7 @@ class ApplicationState(QObject):
 		self.chatAdded.emit(chat)
 
 
+# Slots imported from extensions that will connect to a state's signals once it is initialized
 delayed_connect_slots = {
 	'on_ready': [],
 	'always_run': [],
@@ -412,6 +411,11 @@ def handle_exception(loop, context):
 
 
 def run_default():
+	"""
+	Run ChattyBoi with the default configuration, loading settings from the config module,
+	using qasync for the main async event loop, getting a profile from the launcher,
+	and with all available GUI elements enabled.
+	"""
 	app = QApplication(sys.argv)
 	app.setApplicationName(config.qt_app_name)
 	app.setOrganizationName(config.qt_org_name)

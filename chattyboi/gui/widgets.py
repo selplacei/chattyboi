@@ -1,14 +1,17 @@
 import asyncio
 import datetime
+import json
 import logging
 
 
 from PySide2.QtCore import Qt, QTimer
 from PySide2.QtWidgets import (
 	QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QTableWidgetItem, QPlainTextEdit, QLineEdit,
-	QSizePolicy, QComboBox, QPushButton, QLabel, QStackedWidget, QAbstractItemView, QCheckBox
+	QSizePolicy, QComboBox, QPushButton, QLabel, QStackedWidget, QAbstractItemView, QCheckBox, QTableView
 )
-from PySide2.QtGui import QTextOption
+from PySide2.QtGui import QTextOption, QStandardItemModel, QStandardItem
+
+import utils
 
 
 class DashboardChatView(QTableWidget):
@@ -226,7 +229,7 @@ class DashboardStatusWidget(QWidget):
 
 	def add_message(self, text):
 		self.plainTextEdit.appendPlainText(text)
-		self.plainTextEdit.verticalScrollBar().setValue(self.plainTextEdit.verticalScrollBar().maximum())
+		self.plainTextEdit.verticalScrollBar().setValue(self.plainTextEdit.verticalScrollBar().minimum())
 
 
 class DashboardShortcutWidget(QWidget):
@@ -238,3 +241,51 @@ class DashboardShortcutWidget(QWidget):
 		layout.addWidget(QPushButton('Shortcut 2'))
 		layout.setMargin(0)
 		self.setLayout(layout)
+
+
+class DatabaseEditor(QWidget):
+	COLUMNS = ['ID', 'Nicknames', 'Created on', 'Extension data']
+	UPDATE_INTERVAL_MS = 3000
+
+	def __init__(self, state, parent=None):
+		super().__init__(parent)
+		self.display_limit = 100
+		self.db_wrapper = state.database
+		self.db_cursor = state.database.cursor()
+		self.searchBar = QLineEdit()
+		self.mainTableWidget = QTableView()
+		self.mainTableModel = QStandardItemModel(0, len(self.COLUMNS))
+		self.updateTimer = QTimer()
+
+		# self.mainTableWidget.setHorizontalHeaderLabels(self.COLUMNS)
+		self.updateTimer.timeout.connect(self.update_data)
+		self.updateTimer.start(self.UPDATE_INTERVAL_MS)
+
+		rootLayout = QVBoxLayout()
+		topLayout = QHBoxLayout()
+		topWidget = QWidget()
+		topLayout.addWidget(QLabel('Search for nickname:'))
+		topLayout.addWidget(self.searchBar)
+		topWidget.setLayout(topLayout)
+		rootLayout.addWidget(topWidget)
+		rootLayout.addWidget(self.mainTableWidget)
+		self.setLayout(rootLayout)
+		self.update_data()
+
+	def update_data(self):
+		self.mainTableModel.clear()
+		self.db_cursor.execute(
+			'SELECT rowid, nicknames, created_on, extension_data '
+			'FROM user_info ORDER BY rowid ASC LIMIT ?',
+			(self.display_limit,)
+		)
+		for row in self.db_cursor.fetchall():
+			self.mainTableModel.appendRow([
+				QStandardItem(str(row[0])),
+				QStandardItem(str(json.loads(row[1]))),
+				QStandardItem(utils.timestamp_to_datetime(row[2]).strftime('%y-%m-%d %H:%M')),
+				QStandardItem(str(json.loads(row[3])))
+			])
+		self.mainTableWidget.setModel(self.mainTableModel)
+		self.mainTableWidget.resizeColumnsToContents()
+
