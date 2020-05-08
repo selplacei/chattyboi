@@ -245,19 +245,25 @@ class DashboardShortcutWidget(QWidget):
 
 class DatabaseEditor(QWidget):
 	COLUMNS = ['ID', 'Nicknames', 'Created on', 'Extension data']
-	UPDATE_INTERVAL_MS = 3000
+	UPDATE_INTERVAL_MS = 4000
 
 	def __init__(self, state, parent=None):
 		super().__init__(parent)
 		self.display_limit = 100
+		self.use_search_bar = False
 		self.db_wrapper = state.database
 		self.db_cursor = state.database.cursor()
 		self.searchBar = QLineEdit()
-		self.mainTableWidget = QTableView()
+		self.mainTableView = QTableView()
 		self.mainTableModel = QStandardItemModel(0, len(self.COLUMNS))
 		self.updateTimer = QTimer()
 
-		# self.mainTableWidget.setHorizontalHeaderLabels(self.COLUMNS)
+		self.mainTableModel.setHorizontalHeaderLabels(self.COLUMNS)
+		self.mainTableView.horizontalHeader().setStretchLastSection(True)
+		self.mainTableView.setWordWrap(False)
+		self.mainTableView.verticalHeader().setVisible(False)
+		self.mainTableView.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+		self.searchBar.textEdited.connect(self.onSearchBarTextEdited)
 		self.updateTimer.timeout.connect(self.update_data)
 		self.updateTimer.start(self.UPDATE_INTERVAL_MS)
 
@@ -268,17 +274,33 @@ class DatabaseEditor(QWidget):
 		topLayout.addWidget(self.searchBar)
 		topWidget.setLayout(topLayout)
 		rootLayout.addWidget(topWidget)
-		rootLayout.addWidget(self.mainTableWidget)
+		rootLayout.addWidget(self.mainTableView)
 		self.setLayout(rootLayout)
+		self.update_data()
+		self.mainTableView.resizeColumnsToContents()
+
+	def onSearchBarTextEdited(self):
+		self.use_search_bar = bool(self.searchBar.text())
+		if self.use_search_bar:
+			self.updateTimer.stop()
+		else:
+			self.updateTimer.start(self.UPDATE_INTERVAL_MS)
 		self.update_data()
 
 	def update_data(self):
-		self.mainTableModel.clear()
-		self.db_cursor.execute(
-			'SELECT rowid, nicknames, created_on, extension_data '
-			'FROM user_info ORDER BY rowid ASC LIMIT ?',
-			(self.display_limit,)
-		)
+		self.mainTableModel.setRowCount(0)
+		if self.use_search_bar:
+			self.db_cursor.execute(
+				'SELECT rowid, nicknames, created_on, extension_data '
+				'FROM user_info WHERE nicknames LIKE ? ORDER BY rowid ASC',
+				(f'%{self.searchBar.text()}%',)
+			)
+		else:
+			self.db_cursor.execute(
+				'SELECT rowid, nicknames, created_on, extension_data '
+				'FROM user_info ORDER BY rowid ASC LIMIT ?',
+				(self.display_limit,)
+			)
 		for row in self.db_cursor.fetchall():
 			self.mainTableModel.appendRow([
 				QStandardItem(str(row[0])),
@@ -286,6 +308,5 @@ class DatabaseEditor(QWidget):
 				QStandardItem(utils.timestamp_to_datetime(row[2]).strftime('%y-%m-%d %H:%M')),
 				QStandardItem(str(json.loads(row[3])))
 			])
-		self.mainTableWidget.setModel(self.mainTableModel)
-		self.mainTableWidget.resizeColumnsToContents()
+		self.mainTableView.setModel(self.mainTableModel)
 
