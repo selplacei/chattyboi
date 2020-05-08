@@ -280,7 +280,7 @@ class DatabaseEditor(QWidget):
 		self.mainTableView.resizeColumnsToContents()
 
 	def onSearchBarTextEdited(self):
-		self.use_search_bar = bool(self.searchBar.text())
+		self.use_search_bar = (len(self.searchBar.text()) > 1)
 		if self.use_search_bar:
 			self.updateTimer.stop()
 		else:

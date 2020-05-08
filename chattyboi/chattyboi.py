@@ -55,13 +55,17 @@ class Extension:
 	requires: List[str]
 	implements: List[str]
 
-	def __init__(self, metadata, module):
+	def __init__(self, metadata, hash, module):
 		self.__dict__.update(metadata)
+		self.hash = hash
 		self.module = module
 		self._aliases = set()
 
 	def __eq__(self, other):
 		return self.module is other.module
+
+	def __hash__(self):
+		return self.hash
 
 	def __getitem__(self, item):
 		if item in self.module.__all__:
@@ -140,11 +144,12 @@ class ExtensionHelper:
 		self.state = state
 
 	def load(self, path, metadata, module_name=None):
-		module_name = module_name or 'extension_' + self.get_hash(metadata['source'])
+		hash = self.get_hash(metadata['source'])
+		module_name = module_name or 'extension_' + hash
 		spec = importlib.util.spec_from_file_location(module_name, path / '__init__.py')
 		module = importlib.util.module_from_spec(spec)
 		sys.modules[module_name] = module
-		extension = Extension(metadata, module)
+		extension = Extension(metadata, hash, module)
 		self.state.extensions.append(extension)
 		spec.loader.exec_module(module)
 

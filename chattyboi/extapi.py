@@ -1,3 +1,4 @@
+import json
 import logging
 import types as _types
 import typing
@@ -77,8 +78,22 @@ def get_extension(identifier: str) -> typing.Optional[Extension]:
 
 
 def get_data_path(extension):
-	return state().profile.extension_data_path / chattyboi.ExtensionHelper.get_hash(extension.source)
+	return state().profile.extension_data_path / extension.hash
 
 
 def register_chat(chat: Chat):
 	state().add_chat(chat)
+
+
+def get_user_data(extension, user, **json_kwargs):
+	return json.loads(user.extension_data.get(extension.hash, '{}'), **json_kwargs)
+
+
+def store_user_data(extension, user, data, **json_kwargs):
+	try:
+		ext_data = json.dumps(data, **json_kwargs)
+	except TypeError as err:
+		raise ValueError('Extension data cannot be encoded into JSON') from err
+	all_data = user.extension_data
+	all_data.update({extension.hash: ext_data})
+	user.extension_data = all_data
