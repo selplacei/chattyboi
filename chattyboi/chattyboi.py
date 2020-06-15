@@ -156,7 +156,7 @@ class ExtensionHelper:
 	def load_all(self):
 		# TODO: use a config variable instead of a hardcoded extension directory
 		paths = list((pathlib.Path('./extensions') / name) for name in self.state.profile.extensions)
-		metadata = [self.get_metadata(fp / 'extension.toml') for fp in paths]
+		metadata = [self.get_metadata(fp / 'manifest.toml') for fp in paths]
 		# Check for duplicate implementations
 		implementations = {md['source']: {md['source']} | set(md['implements']) for md in metadata}
 		for left, right in filter(lambda src: src[0] != src[1], itertools.product(implementations.keys(), repeat=2)):

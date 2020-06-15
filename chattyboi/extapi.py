@@ -85,15 +85,11 @@ def register_chat(chat: Chat):
 	state().add_chat(chat)
 
 
-def get_user_data(extension, user, **json_kwargs):
-	return json.loads(user.extension_data.get(extension.hash, '{}'), **json_kwargs)
+def get_user_data(extension, user):
+	return user.extension_data.get(extension.hash, '{}')
 
 
-def store_user_data(extension, user, data, **json_kwargs):
-	try:
-		ext_data = json.dumps(data, **json_kwargs)
-	except TypeError as err:
-		raise ValueError('Extension data cannot be encoded into JSON') from err
+def store_user_data(extension, user, data: dict):
 	all_data = user.extension_data
-	all_data.update({extension.hash: ext_data})
+	all_data.update({extension.hash: data})
 	user.extension_data = all_data

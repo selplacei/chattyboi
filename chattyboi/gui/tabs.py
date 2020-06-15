@@ -75,7 +75,7 @@ class About(QWidget):
 		self.aboutQtButton.setFixedWidth(self.aboutQtButton.sizeHint().width())
 		self.aboutQtButton.clicked.connect(QApplication.instance().aboutQt)
 		self.setAutoFillBackground(True)
-		self.setBackgroundRole(QPalette.Base)
+		self.setBackgroundRole(QPalette.Window)
 		self.rootLayout = QVBoxLayout()
 		self.rootLayout.addWidget(self.topLabel)
 		self.rootLayout.addWidget(self.centralLabel)

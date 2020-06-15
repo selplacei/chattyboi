@@ -160,7 +160,7 @@ class DashboardStatusWidget(QWidget):
 		self.plainTextEdit = QPlainTextEdit()
 		self.logLevelSelector = QComboBox()
 		self.checkboxContainer = QWidget()
-		self.wordWrapLabel = QLabel('Word wrap')
+		self.wordWrapLabel = QLabel('Word wrap:')
 		self.wordWrapCheckbox = QCheckBox()
 		self.leftLabel = QLabel('Show:')
 		self.statusLabel = QLabel()
