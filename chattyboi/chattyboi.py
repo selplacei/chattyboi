@@ -10,13 +10,13 @@ import itertools
 import json
 import logging
 import pathlib
-import sys
 import sqlite3
-from typing import List, Dict, Union, Tuple, Deque, Optional
+import sys
+from typing import List, Union, Tuple, Deque, Optional
 
 import qasync
 import toml
-from PySide2.QtCore import Signal, QObject, QSettings
+from PySide2.QtCore import Signal, QObject
 from PySide2.QtWidgets import QApplication
 
 import config

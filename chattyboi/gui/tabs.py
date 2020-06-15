@@ -37,7 +37,6 @@ class Dashboard(QWidget):
 
 
 class Database(QWidget):
-	# https://doc.qt.io/qt-5/qsqlrelationaltablemodel.html
 	def __init__(self, state, parent=None):
 		super().__init__(parent)
 		self.state = state

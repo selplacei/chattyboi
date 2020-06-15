@@ -1,0 +1,7 @@
+- Use configuration wherever reasonable
+- Don't use JSON in JSON for extension data. Why was that ever a good idea?
+- Improve extension loading: refactor load_order signature, detect problems like missing dependencies earlier, user-friendly error output
+- Extension tab that shows metadata and relationships
+- Update mechanism for extensions
+- A proper dedicated launcher (profile editing, adding, creation, importing, changing global settings that can't be edited at runtime)
+- Async wrapper for the database
