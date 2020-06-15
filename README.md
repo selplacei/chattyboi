@@ -3,9 +3,9 @@
 [![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
 [![Documentation Status](https://readthedocs.org/projects/chattyboi/badge/?version=latest)](https://chattyboi.readthedocs.io/en/latest/?badge=latest)
 
-**ChattyBoi** - chat bot application/framework that can support any chat platform.
+**ChattyBoi** is a platform-independent chat bot application that acts as a framework for custom behavior.
 
-The base application defines things like a user, a chat, a message, etc., and provides easy ways for extensions to store data in a database, keep track of configs, and interact with each other. Additionally, the ChattyBoi launcher lets you store different profiles (instances of data and preferences), and the main application wraps everything into a graphical interface.
+Most behavior is defined by extensions. The base application defines things like a user, a chat, a message, etc., and provides easy ways for extensions to store data in a database, keep track of configs, and interact with each other. Additionally, the ChattyBoi launcher lets you store different profiles (instances of data and preferences), and the main application wraps everything into a graphical interface.
 
 In order to be useful as a chat bot, this application needs configuration. Some guides and presets will be available when the base program is done: among them, a basic general-purpose bot, a generic Discord bot, and a Twitch streamer assistant.
 
