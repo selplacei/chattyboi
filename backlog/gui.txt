@@ -1,0 +1,10 @@
+===== MINOR IMPROVEMENTS =====
+- Make proper arrow buttons for dashboard widget pages (icons, size)
+- Work out how to resize text boxes that show chat names (table, selection drop-down)
+
+===== PLANNED FEATURES =====
+- Useful functionality for the database tab: edit data, better sorting and searching, extension integration to edit data in a user-friendly way
+- Config and extension list tab
+- Easy addition of extension tabs through extapi
+
+===== BUGFIXES =====
