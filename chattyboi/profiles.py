@@ -42,13 +42,8 @@ class Profile:
 		if not self.extension_data_path.is_dir():
 			self.extension_data_path.mkdir(parents=True)
 		self.connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME))
-		self.connection.cursor().execute(
-			'CREATE TABLE IF NOT EXISTS user_info ('
-			'nicknames TEXT NOT NULL, '
-			'created_on FLOAT, '
-			'extension_data TEXT'
-			')'
-		)
+		with open(pathlib.Path(__file__).parent / 'schema.sql') as schema:
+			self.connection.cursor().executescript(schema.read())
 
 	def cleanup(self):
 		self.connection.commit()
