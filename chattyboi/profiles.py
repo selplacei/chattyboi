@@ -22,7 +22,7 @@ class Profile:
 	"""
 	PROPERTIES_FILENAME = 'profile.json'
 	DATABASE_FILENAME = 'users.db'
-	EXTENSION_STORAGE_PATH = 'extension_storage'
+	EXTENSION_STORAGE_PATH = 'storage'
 	DEFAULT_PROPERTIES = {
 		'name': 'Untitled',
 		'created_on': utils.utc_timestamp(),
