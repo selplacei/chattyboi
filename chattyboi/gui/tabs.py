@@ -45,6 +45,28 @@ class Database(QWidget):
 		self.layout().addWidget(self.databaseEditor)
 
 
+class Extensions(QWidget):
+	def __init__(self, state, parent=None):
+		super().__init__(parent)
+		self.state = state
+		self.extension_list = ExtensionList(state, initialize=False)
+		self.extension_viewer = ExtensionViewer(state)
+
+		root_layout = QHBoxLayout()
+		root_layout.addWidget(self.extension_list)
+		root_layout.addWidget(self.extension_viewer)
+		root_layout.setStretch(0, 1)
+		root_layout.setStretch(1, 1)
+		self.extension_list.itemClicked.connect(
+			lambda item: self.extension_viewer.show_extension(
+				next(filter(lambda ext: ext.name == item.text(), state.extensions))
+			)
+		)
+		self.setLayout(root_layout)
+
+		state.ready.connect(self.extension_list.initialize)
+
+
 class About(QWidget):
 	def __init__(self, state, parent=None):
 		super().__init__(parent)

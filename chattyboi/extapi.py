@@ -77,7 +77,7 @@ def get_extension(identifier: str) -> typing.Optional[Extension]:
 	return next((ext for ext in state().extensions if identifier in ext.aliases), None)
 
 
-def get_data_path(extension):
+def get_storage_path(extension):
 	return state().profile.extension_storage_path / extension.hash
 
 

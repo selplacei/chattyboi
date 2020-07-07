@@ -6,7 +6,7 @@ import logging
 
 from PySide2.QtCore import Qt, QTimer
 from PySide2.QtWidgets import (
-	QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QTableWidgetItem, QPlainTextEdit, QLineEdit,
+	QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QTableWidgetItem, QPlainTextEdit, QLineEdit, QListWidget,
 	QSizePolicy, QComboBox, QPushButton, QLabel, QStackedWidget, QAbstractItemView, QCheckBox, QTableView
 )
 from PySide2.QtGui import QTextOption, QStandardItemModel, QStandardItem
@@ -310,3 +310,44 @@ class DatabaseEditor(QWidget):
 			])
 		self.mainTableView.setModel(self.mainTableModel)
 
+
+class ExtensionList(QListWidget):
+	def __init__(self, state, initialize=True, parent=None):
+		super().__init__(parent)
+		self.state = state
+		if initialize:
+			self.initialize()
+
+	def initialize(self):
+		self.addItems(ext.name for ext in self.state.extensions)
+
+
+class ExtensionViewer(QWidget):
+	def __init__(self, state, parent=None):
+		super().__init__(parent)
+		self.state = state
+		self.extension = None
+		self.label = QLabel()
+		self.label.setWordWrap(True)
+		self.label.setAlignment(Qt.AlignTop)
+		layout = QHBoxLayout()
+		layout.addWidget(self.label)
+		layout.setMargin(0)
+		self.setLayout(layout)
+
+	def disable(self):
+		self.label.setText('')
+
+	def show_extension(self, extension):
+		self.extension = extension
+		self.update_data()
+
+	def update_data(self):
+		self.label.setText(
+			f'{self.extension.name} (version {self.extension.version})\n'
+			f'Source: {self.extension.source}\n'
+			f'Author: {self.extension.author}\n'
+			f'License: {self.extension.license}\n'
+			f'{self.extension.summary}\n\n'
+			f'{self.extension.description}'
+		)
