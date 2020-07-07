@@ -5,3 +5,6 @@
 - Update mechanism for extensions
 - A proper dedicated launcher (profile editing, adding, creation, importing, changing global settings that can't be edited at runtime)
 - Async wrapper for the database
+
+===== BUGFIXES =====
+Some exceptions aren't caught by the logger and aren't displayed in the status widget

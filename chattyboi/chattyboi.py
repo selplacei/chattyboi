@@ -188,6 +188,9 @@ class DatabaseWrapper:
 	def cursor(self):
 		return self.connection.cursor()
 
+	def commit(self):
+		self.connection.commit()
+
 	def self_user(self):
 		return self.find_or_add_user(self.SELF_NICKNAME)
 
@@ -295,8 +298,7 @@ class User(QObject):
 class Message(QObject):
 	"""
 	A class representing a single message.
-	A message with `None` as the source can be useful for testing, where the bot only needs
-	to react to a message without interacting with its author.
+	A message with `None` as the source can be useful for testing where the bot doesn't need to send a response.
 	"""
 	def __init__(self, source: Optional[Chat], author: User, content, timestamp=None):
 		super().__init__(None)
@@ -308,11 +310,14 @@ class Message(QObject):
 	def __str__(self):
 		return self.content
 
+	async def respond(self, *args, **kwargs):
+		await self.source.send(*args, **kwargs)
+
 
 class Chat(QObject):
 	"""
 	A class representing an API which can produce Message objects, and to which content can be sent.
-	When a new message is received, `new_message()` should be called.
+	Whenever a new message is received, `new_message()` should be called.
 	"""
 	messageReceived = Signal(Message)
 
@@ -330,6 +335,7 @@ class Chat(QObject):
 		return message
 
 	async def send(self, content):
+		self.new_message(state.state.database.self_user(), content)
 		state.state.anyMessageSent.emit(content)
 
 
