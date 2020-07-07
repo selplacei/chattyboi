@@ -430,8 +430,8 @@ def run_default():
 	app.setApplicationName(config.qt_app_name)
 	app.setOrganizationName(config.qt_org_name)
 	loop = qasync.QEventLoop(app)
-	asyncio.set_event_loop(loop)
 	loop.set_exception_handler(handle_exception)
+	asyncio.set_event_loop(loop)
 
 	_state = state.state = ApplicationState.default()
 

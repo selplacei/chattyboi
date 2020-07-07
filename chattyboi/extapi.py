@@ -1,9 +1,10 @@
+import functools
 import json
 import logging
 import types as _types
 import typing
 
-import qasync
+from qasync import asyncSlot
 
 import chattyboi
 import config
@@ -13,7 +14,6 @@ import state as _state
 import utils
 
 
-async_slot = qasync.asyncSlot
 Extension = chattyboi.Extension
 User = chattyboi.User
 Message = chattyboi.Message
@@ -32,25 +32,25 @@ def state():
 	return _state.state
 
 
-def on_ready(slot):
-	chattyboi.delayed_connect_slots['on_ready'].append(slot)
+def on_ready(coro):
+	chattyboi.delayed_connect_slots['on_ready'].append(asyncSlot()(coro))
 
 
 def always_run(interval=1):
-	def wrapper(coro):
+	def deco(coro):
 		chattyboi.delayed_connect_slots['always_run'].append((coro, interval))
 		return coro
-	return wrapper
+	return deco
 
 
-def on_message(slot):
-	chattyboi.delayed_connect_slots['on_message'].append(slot)
-	return slot
+def on_message(coro):
+	chattyboi.delayed_connect_slots['on_message'].append(asyncSlot(Message)(coro))
+	return coro
 
 
-def on_cleanup(slot):
-	chattyboi.delayed_connect_slots['on_cleanup'].append(slot)
-	return slot
+def on_cleanup(coro):
+	chattyboi.delayed_connect_slots['on_cleanup'].append(asyncSlot()(coro))
+	return coro
 
 
 def log(message, level='INFO'):
@@ -74,7 +74,7 @@ def get_extension(identifier: str) -> typing.Optional[Extension]:
 	:param identifier: a source, a name, an alias, or a module name
 	:returns: Extension object if found, None otherwise
 	"""
-	return next((candidate for candidate in state().extensions if identifier in candidate.aliases), None)
+	return next((ext for ext in state().extensions if identifier in ext.aliases), None)
 
 
 def get_data_path(extension):
