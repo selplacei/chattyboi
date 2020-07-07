@@ -1,5 +1,6 @@
 ===== MINOR IMPROVEMENTS =====
 - Make proper arrow buttons for dashboard widget pages (icons, size)
+- Figure out the word wrap checkbox
 - Work out how to resize text boxes that show chat names (table, selection drop-down)
 
 ===== PLANNED FEATURES =====

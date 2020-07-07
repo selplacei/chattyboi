@@ -22,9 +22,9 @@ class Profile:
 	"""
 	PROPERTIES_FILENAME = 'profile.json'
 	DATABASE_FILENAME = 'users.db'
-	EXTENSION_DATA_DIRECTORY = 'extension_data'
+	EXTENSION_STORAGE_PATH = 'extension_storage'
 	DEFAULT_PROPERTIES = {
-		'name': 'Unnamed',
+		'name': 'Untitled',
 		'created_on': utils.utc_timestamp(),
 		'extensions': set(),
 		'note': None
@@ -35,12 +35,12 @@ class Profile:
 		self.properties: dict = None
 		self.connection: sqlite3.Connection = None
 		self.database_path = self.path / self.DATABASE_FILENAME
-		self.extension_data_path = pathlib.Path(self.path / self.EXTENSION_DATA_DIRECTORY)
+		self.extension_storage_path = pathlib.Path(self.path / self.EXTENSION_STORAGE_PATH)
 		self.load_properties()
 
 	def initialize(self):
-		if not self.extension_data_path.is_dir():
-			self.extension_data_path.mkdir(parents=True)
+		if not self.extension_storage_path.is_dir():
+			self.extension_storage_path.mkdir(parents=True)
 		self.connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME))
 		with open(pathlib.Path(__file__).parent / 'schema.sql') as schema:
 			self.connection.cursor().executescript(schema.read())

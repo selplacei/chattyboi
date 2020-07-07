@@ -78,7 +78,7 @@ def get_extension(identifier: str) -> typing.Optional[Extension]:
 
 
 def get_data_path(extension):
-	return state().profile.extension_data_path / extension.hash
+	return state().profile.extension_storage_path / extension.hash
 
 
 def register_chat(chat: Chat):
