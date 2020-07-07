@@ -328,24 +328,23 @@ class Chat(QObject):
 	def __str__(self):
 		return 'Unknown'
 
-	def new_message(self, author, content):
-		message = Message(self, author, content)
+	def new_message(self, message: Message):
 		self.messages.append(message)
 		self.messageReceived.emit(message)
 		return message
 
 	async def send(self, content):
-		self.new_message(state.state.database.self_user(), content)
+		self.new_message(Message(self, state.state.database.self_user(), content))
 		state.state.anyMessageSent.emit(content)
 
 
 class ApplicationState(QObject):
 	"""
-	Data structure that describes a state of the ChattyBoi application.
+	Data structure that describes the state of a ChattyBoi application.
 	The following information can be retrieved using this class:
-		* ChattyBoi's logger;
-		* the associated profile;
-		* currently loaded extensions;
+		* main ChattyBoi logger;
+		* current profile;
+		* loaded extensions;
 		* associated ExtensionHelper;
 		* associated DatabaseWrapper;
 		* active chat streams;
