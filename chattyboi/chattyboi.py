@@ -94,7 +94,7 @@ class ExtensionHelper:
 		* updating the state's extension list.
 	"""
 	@staticmethod
-	def get_metadata(fp: pathlib.Path, set_defaults=True):
+	def get_metadata(fp: pathlib.Path, use_defaults=True):
 		metadata = {
 			'author': 'Unknown',
 			'version': '<unknown>',
@@ -103,10 +103,10 @@ class ExtensionHelper:
 			'description': 'No description provided.',
 			'requires': [],
 			'implements': []
-		} if set_defaults else {}
+		} if use_defaults else {}
 		metadata.update(toml.load(fp))
-		if not ({'name', 'source'} <= set(metadata.keys())):
-			raise ValueError(f'Extension metadata at {fp} does not provide a name and a source')
+		if 'name' not in metadata or 'source' not in metadata:
+			raise RuntimeError(f'Extension metadata at {fp} does not provide a name and a source')
 		return metadata
 
 	@staticmethod
@@ -117,7 +117,7 @@ class ExtensionHelper:
 	def load_order(extensions: List[Tuple[pathlib.Path, dict]]) -> List[pathlib.Path]:
 		"""
 		Use Kahn's topological sort algorithm to find an extension load order that satisfies all dependencies.
-		This function assumes no duplicate implementations. A ValueError will be raised if there is a dependency cycle.
+		Assumes no duplicate implementations. A RuntimeError will be raised if there is a dependency cycle.
 		"""
 		order = []
 		graph = {path: [] for path, _ in extensions}
@@ -134,9 +134,9 @@ class ExtensionHelper:
 				if len(graph[m]) == 0:
 					queue.append(m)
 		if any(edges for node, edges in graph.items()):
-			raise ValueError(
-				f'Encountered a dependency cycle when finding the load order for extensions. '
-				f'Remaining values in the dependency graph:\n{graph}'
+			raise RuntimeError(
+				f'Encountered a dependency cycle when finding the load order. '
+				f'These extensions probably caused the error:\n{graph}'
 			)
 		return order
 
@@ -145,7 +145,7 @@ class ExtensionHelper:
 
 	def load(self, path, metadata, module_name=None):
 		hash = self.get_hash(metadata['source'])
-		module_name = module_name or 'extension_' + hash
+		module_name = module_name or 'cbext_' + hash
 		spec = importlib.util.spec_from_file_location(module_name, path / '__init__.py')
 		module = importlib.util.module_from_spec(spec)
 		sys.modules[module_name] = module
@@ -179,7 +179,6 @@ class ExtensionHelper:
 class DatabaseWrapper:
 	"""
 	Wrapper around a profile's SQLite3 database that provides ChattyBoi-specific helper functions.
-	Use `cursor()` to acquire a cursor to the database connection.
 	"""
 	SELF_NICKNAME = 'self'
 
@@ -237,7 +236,7 @@ class DatabaseWrapper:
 
 class User(QObject):
 	"""
-	A class that represents a single user's entry in the database.
+	Represents a single user's entry in the database.
 	All information is gathered from the `user_info` table, and the following columns are expected:
 		* nicknames: TEXT - JSON list of nicknames, where the first one is preferred.
 		* created_on: FLOAT - POSIX timestamp of the UTC time at which this entry was created.
@@ -320,8 +319,8 @@ class User(QObject):
 
 class Message(QObject):
 	"""
-	A class representing a single message.
-	A message with `None` as the source can be useful for testing where the bot doesn't need to send a response.
+	Represents a single message.
+	A message with `None` as the source can be useful for debugging if the bot doesn't need to send a response.
 	"""
 	def __init__(self, source: Optional[Chat], author: User, content, timestamp=None):
 		super().__init__(None)
@@ -339,8 +338,8 @@ class Message(QObject):
 
 class Chat(QObject):
 	"""
-	A class representing an API which can produce Message objects, and to which content can be sent.
-	Whenever a new message is received, `new_message()` should be called.
+	Represents an API which can produce Message objects and to which content can be sent.
+	Whenever a new message is received, `new_message()` should be called. Signals are handled automatically.
 	"""
 	messageReceived = Signal(Message)
 

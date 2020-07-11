@@ -18,7 +18,7 @@ User = chattyboi.User
 Message = chattyboi.Message
 Chat = chattyboi.Chat
 
-modules = _types.SimpleNamespace(
+mod = _types.SimpleNamespace(
 	chattyboi=chattyboi,
 	config=config,
 	gui=gui,
@@ -58,15 +58,6 @@ def on_cleanup(coro):
 
 def log(message, level='INFO'):
 	chattyboi.logger.log(getattr(logging, level.upper()), message)
-
-
-def add_extension_alias(identifier, name):
-	extension = get_extension(identifier)
-	if extension is None:
-		raise ValueError(f'The extension [{identifier}] does not exist')
-	if (test_duplicate := get_extension(name)) and test_duplicate != extension:
-		raise ValueError(f'An extension with the name or alias {name} already exists')
-	extension.add_alias(name)
 
 
 def get_extension(identifier: str) -> typing.Optional[Extension]:
