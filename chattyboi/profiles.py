@@ -39,9 +39,10 @@ class Profile:
 		self.load_properties()
 
 	def initialize(self):
+		from chattyboi import DatabaseWrapper
 		if not self.extension_storage_path.is_dir():
 			self.extension_storage_path.mkdir(parents=True)
-		self.db_connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME))
+		self.db_connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME), factory=DatabaseWrapper)
 		with open(pathlib.Path(__file__).parent / 'schema.sql') as schema:
 			self.db_connection.cursor().executescript(schema.read())
 

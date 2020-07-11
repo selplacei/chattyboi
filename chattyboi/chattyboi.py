@@ -176,27 +176,21 @@ class ExtensionHelper:
 			self.load(path, metadata[paths.index(path)])
 
 
-class DatabaseWrapper:
+class DatabaseWrapper(sqlite3.Connection):
 	"""
 	Wrapper around a profile's SQLite3 database that provides ChattyBoi-specific helper functions.
 	"""
 	SELF_NICKNAME = 'self'
 
-	def __init__(self, source: pathlib.Path, connection: sqlite3.Connection):
+	def __init__(self, source: pathlib.Path, *args, **kwargs):
+		super().__init__(source, *args, **kwargs)
 		self.source = source
-		self.connection = connection
 
 	def __eq__(self, other):
 		return self.source == other.source
 
 	def __hash__(self):
 		return id(self)
-
-	def cursor(self):
-		return self.connection.cursor()
-
-	def commit(self):
-		self.connection.commit()
 
 	def self_user(self):
 		return self.find_or_add_user(self.SELF_NICKNAME)
@@ -389,14 +383,14 @@ class ApplicationState(QObject):
 		self.main_window: gui.windows.MainWindow = main_window
 		self.start_time: datetime.datetime = None
 		self.extension_helper = ExtensionHelper(self)
-		self.database: DatabaseWrapper = None
 		self.ready.connect(self._on_ready)
 
 	def _on_ready(self):
 		self.start_time = datetime.datetime.now()
 
-	def initialize_database(self):
-		self.database = DatabaseWrapper(self.profile.db_path, self.profile.db_connection)
+	@property
+	def database(self):
+		return self.profile.db_connection
 
 	@property
 	def uptime(self) -> datetime.timedelta:
@@ -437,7 +431,6 @@ def run_default():
 		profile.initialize()
 		_state.cleanup.connect(profile.cleanup)
 		_state.extension_helper.load_all()
-		_state.initialize_database()
 		_state.main_window = gui.MainWindow(_state)
 		_state.ready.emit()
 		_state.main_window.show()
