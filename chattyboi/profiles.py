@@ -33,26 +33,22 @@ class Profile:
 	def __init__(self, path: pathlib.Path):
 		self.path = path
 		self.properties: dict = None
-		self.connection: sqlite3.Connection = None
-		self.database_path = self.path / self.DATABASE_FILENAME
+		self.db_connection: sqlite3.Connection = None
+		self.db_path = self.path / self.DATABASE_FILENAME
 		self.extension_storage_path = pathlib.Path(self.path / self.EXTENSION_STORAGE_PATH)
 		self.load_properties()
 
 	def initialize(self):
 		if not self.extension_storage_path.is_dir():
 			self.extension_storage_path.mkdir(parents=True)
-		self.connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME))
+		self.db_connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME))
 		with open(pathlib.Path(__file__).parent / 'schema.sql') as schema:
-			self.connection.cursor().executescript(schema.read())
+			self.db_connection.cursor().executescript(schema.read())
 
 	def cleanup(self):
-		self.connection.commit()
-		self.connection.close()
+		self.db_connection.commit()
+		self.db_connection.close()
 		self.save_properties()
-
-	def get_database_wrapper(self):
-		from chattyboi import DatabaseWrapper
-		return DatabaseWrapper.cache.get(self.database_path) or DatabaseWrapper(self.database_path, self.connection)
 
 	def load_properties(self):
 		try:

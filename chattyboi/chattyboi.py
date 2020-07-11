@@ -175,15 +175,16 @@ class DatabaseWrapper:
 	Use `cursor()` to acquire a cursor to the database connection.
 	"""
 	SELF_NICKNAME = 'self'
-	cache = {}
 
 	def __init__(self, source: pathlib.Path, connection: sqlite3.Connection):
 		self.source = source
 		self.connection = connection
-		DatabaseWrapper.cache[source] = self
 
 	def __eq__(self, other):
 		return self.source == other.source
+
+	def __hash__(self):
+		return id(self)
 
 	def cursor(self):
 		return self.connection.cursor()
@@ -239,8 +240,20 @@ class User(QObject):
 	tested with the `exists()` method.
 	To get User objects by searching for a name, adding a new user, etc., use the DatabaseWrapper class.
 	"""
+	__cache__ = {}
+
+	def __new__(cls, database: DatabaseWrapper, rowid):
+		if (database, rowid) in cls.__cache__:
+			return cls.__cache__[(database, rowid)]
+		self = super().__new__(cls, database, rowid)
+		cls.__cache__[(database, rowid)] = self
+		self.__initialized__ = False
+		return self
+
 	def __init__(self, database: DatabaseWrapper, rowid):
-		super().__init__(None)
+		if not self.__initialized__:
+			super().__init__(None)
+			self.__initialized__ = True
 		self.database = database
 		self.rowid = rowid
 
@@ -248,6 +261,9 @@ class User(QObject):
 		if self.exists():
 			return self.name
 		return '[Non-existing User]'
+
+	def __eq__(self, other):
+		return self.rowid == other.rowid
 
 	def exists(self):
 		c = self.database.cursor()
@@ -356,40 +372,23 @@ class ApplicationState(QObject):
 	anyMessageReceived = Signal(Message)
 	anyMessageSent = Signal(str)
 
-	@classmethod
-	def default(cls):
-		return cls(
-			logger=logger
-		)
-
-	def __init__(self, logger, profile=None, extensions=None, chats=None, main_window=None):
+	def __init__(self, logger, profile, extensions=None, chats=None, main_window=None):
 		super().__init__(None)
-		self._profile = profile
+		self.profile: profiles.Profile = profile
 		self.logger: logging.Logger = logger
 		self.extensions: List[Extension] = extensions or []
 		self.chats: List[Chat] = chats or []
 		self.main_window: gui.windows.MainWindow = main_window
 		self.start_time: datetime.datetime = None
 		self.extension_helper = ExtensionHelper(self)
+		self.database: DatabaseWrapper = None
 		self.ready.connect(self._on_ready)
-
-	@property
-	def profile(self) -> profiles.Profile:
-		return self._profile
-
-	@profile.setter
-	def profile(self, value):
-		if self._profile is None:
-			self._profile = value
-		else:
-			raise AttributeError('The profile cannot be changed after it has been set.')
-
-	@property
-	def database(self) -> DatabaseWrapper:
-		return self.profile.get_database_wrapper()
 
 	def _on_ready(self):
 		self.start_time = datetime.datetime.now()
+
+	def initialize_database(self):
+		self.database = DatabaseWrapper(self.profile.db_path, self.profile.db_connection)
 
 	@property
 	def uptime(self) -> datetime.timedelta:
@@ -433,13 +432,12 @@ def run_default():
 	loop.set_exception_handler(handle_exception)
 	asyncio.set_event_loop(loop)
 
-	_state = state.state = ApplicationState.default()
-
 	def profile_select_callback(path):
 		profile = profiles.Profile(path)
+		_state = state.state = ApplicationState(logger, profile)
 		profile.initialize()
-		state.state.profile = profile
 		_state.extension_helper.load_all()
+		_state.initialize_database()
 		for slot in delayed_connect_slots['on_ready']:
 			_state.ready.connect(slot)
 		for slot in [profile.cleanup] + delayed_connect_slots['on_cleanup']:
