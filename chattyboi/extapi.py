@@ -93,3 +93,7 @@ def store_user_data(extension, user, data: dict):
 	all_data = user.extension_data
 	all_data.update({extension.hash: data})
 	user.extension_data = all_data
+
+
+def self_user():
+	return state().database.self_user()
