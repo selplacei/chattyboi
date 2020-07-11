@@ -375,12 +375,14 @@ class ApplicationState(QObject):
 		* the main GUI window.
 	"""
 	ready = Signal()
+	cleanup = Signal()
 	chatAdded = Signal(Chat)
 	anyMessageReceived = Signal(Message)
 	anyMessageSent = Signal(str)
 
 	def __init__(self, logger, profile, extensions=None, chats=None, main_window=None):
 		super().__init__(None)
+		QApplication.instance().aboutToQuit.connect(self.cleanup)
 		self.profile: profiles.Profile = profile
 		self.logger: logging.Logger = logger
 		self.extensions: List[Extension] = extensions or []
@@ -410,15 +412,6 @@ class ApplicationState(QObject):
 		self.chatAdded.emit(chat)
 
 
-# Slots imported from extensions that will connect to a state's signals once it is initialized
-delayed_connect_slots = {
-	'on_ready': [],
-	'always_run': [],
-	'on_message': [],
-	'on_cleanup': []
-}
-
-
 def handle_exception(loop, context):
 	if exception := context.get('exception', None):
 		logger.error('Unhandled exception in event loop', exc_info=exception)
@@ -443,23 +436,11 @@ def run_default():
 		profile = profiles.Profile(path)
 		_state = state.state = ApplicationState(logger, profile)
 		profile.initialize()
+		_state.cleanup.connect(profile.cleanup)
 		_state.extension_helper.load_all()
 		_state.initialize_database()
-		for slot in delayed_connect_slots['on_ready']:
-			_state.ready.connect(slot)
-		for slot in [profile.cleanup] + delayed_connect_slots['on_cleanup']:
-			app.aboutToQuit.connect(slot)
-
 		_state.main_window = gui.MainWindow(_state)
-		for slot in delayed_connect_slots['on_message']:
-			_state.anyMessageReceived.connect(slot)
 		_state.ready.emit()
-		for coro, interval in delayed_connect_slots['always_run']:
-			async def repeat():
-				while loop.is_running():
-					await coro()
-					await asyncio.sleep(interval)
-			loop.create_task(repeat())
 		_state.main_window.show()
 
 	# TODO: get search paths from QSettings

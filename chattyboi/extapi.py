@@ -1,5 +1,4 @@
-import functools
-import json
+import asyncio
 import logging
 import types as _types
 import typing
@@ -33,23 +32,27 @@ def state():
 
 
 def on_ready(coro):
-	chattyboi.delayed_connect_slots['on_ready'].append(asyncSlot()(coro))
+	state().ready.connect(asyncSlot()(coro))
+	return coro
 
 
 def always_run(interval=1):
 	def deco(coro):
-		chattyboi.delayed_connect_slots['always_run'].append((coro, interval))
-		return coro
+		async def repeat():
+			while asyncio.get_event_loop().is_running():
+				await coro()
+				await asyncio.sleep(interval)
+		state().ready.connect(lambda: asyncio.get_event_loop().create_task(repeat()))
 	return deco
 
 
 def on_message(coro):
-	chattyboi.delayed_connect_slots['on_message'].append(asyncSlot(Message)(coro))
+	state().anyMessageReceived.connect(asyncSlot(Message)(coro))
 	return coro
 
 
 def on_cleanup(coro):
-	chattyboi.delayed_connect_slots['on_cleanup'].append(asyncSlot()(coro))
+	state().cleanup.connect(asyncSlot()(coro))
 	return coro
 
 
