@@ -73,7 +73,7 @@ class Extension:
 
 	@property
 	def aliases(self):
-		return {self.source, self.module.__name__, *self.implements} | self._aliases
+		return {self.name, self.source, self.module.__name__, *self.implements} | self._aliases
 
 	def add_alias(self, alias):
 		self._aliases.add(alias)
@@ -157,8 +157,15 @@ class ExtensionHelper:
 		# TODO: use a config variable instead of a hardcoded extension directory
 		paths = list((pathlib.Path('./extensions') / name) for name in self.state.profile.extensions)
 		metadata = [self.get_metadata(fp / 'manifest.toml') for fp in paths]
-		# Check for duplicate implementations
 		implementations = {md['source']: {md['source']} | set(md['implements']) for md in metadata}
+		implemented = set()
+		for i in implementations.values():
+			implemented.update(i)
+		dependencies = {md['name']: set(md['requires']) for md in metadata}
+		for ext, deps in dependencies.items():
+			for dep in deps:
+				if dep not in implemented:
+					raise RuntimeError(f'Dependency [{dep}] not satisfied for extension [{ext}]')
 		for left, right in filter(lambda src: src[0] != src[1], itertools.product(implementations.keys(), repeat=2)):
 			if conflicts := implementations[left] & implementations[right]:
 				raise RuntimeError(
