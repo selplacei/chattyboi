@@ -38,11 +38,9 @@ class Extension:
 	Information about a specific loaded extension.
 	This only represents the info about it; its module is imported separately,
 	and destroying this object will not unload the extension.
-
-	The following information can be retrieved using this class:
-		* metadata: accessed as normal attributes; they are listed as annotations in this class.
-		* associated module: the `module` attribute.
-		* public attributes of the module: accessed with `__get__`, i.e. as in a dict (extension['key']).
+	All attributes in the module's __all__ can be accessed through this object.
+	If any of them collide with the attributes defined here, the former takes priority,
+	but this behavior is strongly discouraged unless you intend to override the behavior.
 	"""
 	name: str
 	source: str
@@ -67,9 +65,14 @@ class Extension:
 	def __hash__(self):
 		return self.hash
 
-	def __getitem__(self, item):
-		if item in self.module.__all__:
-			return getattr(self.module, item)
+	def __getattribute__(self, item):
+		try:
+			module = super().__getattribute__('module')
+			if item in module.__all__:
+				return getattr(module, item)
+		except AttributeError:
+			pass
+		return super().__getattribute__(item)
 
 	@property
 	def aliases(self):
