@@ -2,6 +2,8 @@ import asyncio
 import logging
 import types as _types
 import typing
+import inspect
+import sys
 
 from qasync import asyncSlot
 
@@ -25,6 +27,14 @@ mod = _types.SimpleNamespace(
 	profiles=profiles,
 	utils=utils
 )
+
+
+def this() -> Extension:
+	# Get the extension from which this function was called.
+	# If not called from an extension package/module, this will raise a RuntimeError.
+	if e := get_extension(inspect.currentframe().f_back.f_globals['__name__'].split('.', 1)[0]):
+		return e
+	raise RuntimeError('this() must be called directly from within an extension (__init__.py or any submodule)')
 
 
 def state():
