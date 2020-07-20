@@ -119,7 +119,11 @@ def get_storage_path(extension: Extension) -> pathlib.Path:
 	"""
 	:return: Path of the profile-specific storage directory for the extension
 	"""
-	return state().profile.extension_storage_path / extension.hash
+	path = state().profile.extension_storage_path / extension.hash
+	if not path.exists():
+		path.mkdir(parents=True)
+		log(f'Created extension storage directory "{path}" for "{extension}"')
+	return path
 
 
 def register_chat(chat: Chat):

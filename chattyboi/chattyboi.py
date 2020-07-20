@@ -59,6 +59,9 @@ class Extension:
 		self.module = module
 		self._aliases = set()
 
+	def __str__(self):
+		return self.name
+
 	def __eq__(self, other):
 		return self.module is other.module
 
