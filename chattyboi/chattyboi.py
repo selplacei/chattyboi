@@ -84,6 +84,14 @@ class Extension:
 	def add_alias(self, alias):
 		self._aliases.add(alias)
 
+	@property
+	def storage_path(self) -> pathlib.Path:
+		path = state.state.profile.extension_storage_path / self.hash
+		if not path.exists():
+			path.mkdir(parents=True)
+			logger.log(logging.INFO, f'Created extension storage directory "{path}" for "{self}"')
+		return path
+
 
 class ExtensionHelper:
 	"""
@@ -315,6 +323,14 @@ class User(QObject):
 			'UPDATE user_info SET extension_data = ? WHERE rowid = ?',
 			(json.dumps(value), self.rowid)
 		)
+
+	def get_data(self, extension):
+		self.extension_data.get(extension.hash, {})
+
+	def store_data(self, extension, data):
+		all_data = self.extension_data
+		all_data[extension.hash] = data
+		self.extension_data = all_data
 
 
 class Message(QObject):

@@ -115,39 +115,12 @@ def get_extension(identifier: str) -> Optional[Extension]:
 	return next((ext for ext in state().extensions if identifier in ext.aliases), None)
 
 
-def get_storage_path(extension: Extension) -> pathlib.Path:
-	"""
-	:return: Path of the profile-specific storage directory for the extension
-	"""
-	path = state().profile.extension_storage_path / extension.hash
-	if not path.exists():
-		path.mkdir(parents=True)
-		log(f'Created extension storage directory "{path}" for "{extension}"')
-	return path
-
-
 def register_chat(chat: Chat):
 	"""
 	Register a Chat so that it gets integrated with the rest of ChattyBoi. This takes care of adding it to the state
 	and connecting all of the necessary signals.
 	"""
 	state().add_chat(chat)
-
-
-def get_user_data(extension: Extension, user: User) -> Dict:
-	"""
-	A shorter way of getting the user's extension data for the specified extension.
-	"""
-	return user.extension_data.get(extension.hash, {})
-
-
-def store_user_data(extension: Extension, user: User, data: Dict):
-	"""
-	A shorter way of storing per-user per-extension data without worrying about other extensions.
-	"""
-	all_data = user.extension_data
-	all_data.update({extension.hash: data})
-	user.extension_data = all_data
 
 
 def self_user() -> User:
