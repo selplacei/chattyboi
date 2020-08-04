@@ -12,7 +12,7 @@ import logging
 import pathlib
 import sqlite3
 import sys
-from typing import List, Union, Tuple, Deque, Optional
+from typing import List, Union, Tuple, Deque, Optional, TypeVar, Generic
 
 import qasync
 import toml
@@ -46,7 +46,6 @@ class Extension:
 	source: str
 	author: str
 	version: str
-	source: str
 	license: str
 	summary: str
 	description: str
@@ -85,7 +84,7 @@ class Extension:
 		self._aliases.add(alias)
 
 	@property
-	def storage_path(self) -> pathlib.Path:
+	def storage_path(self):
 		path = state.state.profile.extension_storage_path / self.hash
 		if not path.exists():
 			path.mkdir(parents=True)
@@ -277,7 +276,7 @@ class User(QObject):
 		return '[Non-existing User]'
 
 	def __eq__(self, other):
-		return self.rowid == other.rowid
+		return self.exists() and self.rowid == other.rowid
 
 	def exists(self):
 		c = self.database.cursor()
@@ -333,12 +332,15 @@ class User(QObject):
 		self.extension_data = all_data
 
 
-class Message(QObject):
+MessageContent = TypeVar('MessageContent', collections.UserString, str, bytes)
+
+
+class Message(QObject, Generic[MessageContent]):
 	"""
 	Represents a single message.
 	A message with `None` as the source can be useful for debugging if the bot doesn't need to send a response.
 	"""
-	def __init__(self, source: Optional[Chat], author: User, content, timestamp=None):
+	def __init__(self, source: Optional[Chat], author: User, content: MessageContent, timestamp=None):
 		super().__init__(None)
 		self.source = source
 		self.author = author
@@ -346,13 +348,13 @@ class Message(QObject):
 		self.timestamp = timestamp or datetime.datetime.now().timestamp()
 
 	def __str__(self):
-		return self.content
+		return str(self.content)
 
 	async def respond(self, *args, **kwargs):
 		await self.source.send(*args, **kwargs)
 
 
-class Chat(QObject):
+class Chat(QObject, Generic[MessageContent]):
 	"""
 	Represents an API which can produce Message objects and to which content can be sent.
 	Whenever a new message is received, `new_message()` should be called. Signals are handled automatically.
@@ -361,17 +363,17 @@ class Chat(QObject):
 
 	def __init__(self):
 		super().__init__(None)
-		self.messages: Deque[Message] = collections.deque()
+		self.messages: Deque[Message[MessageContent]] = collections.deque()
 
 	def __str__(self):
 		return 'Unknown'
 
-	def new_message(self, message: Message):
+	def new_message(self, message: Message[MessageContent]):
 		self.messages.append(message)
 		self.messageReceived.emit(message)
 		return message
 
-	async def send(self, content):
+	async def send(self, content: MessageContent):
 		self.new_message(Message(self, state.state.database.self_user(), content))
 		state.state.anyMessageSent.emit(content)
 

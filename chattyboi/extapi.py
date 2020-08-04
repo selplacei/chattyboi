@@ -34,8 +34,8 @@ def this() -> Extension:
 	Get the extension from which this function was called.
 
 	This should only be called from within extension code, i.e. where __name__ until the first dot is guaranteed to be
-	the same as in the extension's __init__.py. Use this sparingly, preferably only in simple extensions, and on
-	the top level. This assumes that __name__ wasn't overwritten.
+	the same as in the extension's __init__.py. Use this sparingly, preferably only in simple extensions, and directly
+	from extension code. This assumes that __name__ wasn't overwritten.
 
 	:return: Extension object if found, raising a RuntimeError otherwise
 	:raise: RuntimeError if not found

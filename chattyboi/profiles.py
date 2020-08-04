@@ -3,6 +3,7 @@ import json
 import pathlib
 import sqlite3
 
+import chattyboi
 import utils
 
 
@@ -33,16 +34,15 @@ class Profile:
 	def __init__(self, path: pathlib.Path):
 		self.path = path
 		self.properties: dict = None
-		self.db_connection: sqlite3.Connection = None
+		self.db_connection: chattyboi.DatabaseWrapper = None
 		self.db_path = self.path / self.DATABASE_FILENAME
 		self.extension_storage_path = pathlib.Path(self.path / self.EXTENSION_STORAGE_PATH)
 		self.load_properties()
 
 	def initialize(self):
-		from chattyboi import DatabaseWrapper
 		if not self.extension_storage_path.is_dir():
 			self.extension_storage_path.mkdir(parents=True)
-		self.db_connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME), factory=DatabaseWrapper)
+		self.db_connection = sqlite3.connect(str(self.path / self.DATABASE_FILENAME), factory=chattyboi.DatabaseWrapper)
 		with open(pathlib.Path(__file__).parent / 'schema.sql') as schema:
 			self.db_connection.cursor().executescript(schema.read())
 
