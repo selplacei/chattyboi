@@ -1,9 +1,4 @@
 #!/bin/sh
-# Get installation directory
-# Create sub-directories 'code', 'extensions', 'profiles'
-# Copy files from repository
-# Copy launch and update scripts
-# Make a venv and scripts packages
 DEFAULT_DEST="$HOME/chattyboi"
 DESTINATION=$DEFAULT_DEST
 UPDATE_ON_COPY=$true
@@ -36,5 +31,6 @@ python -m venv "$DESTINATION/code/venv"
 $DESTINATION/code/venv/bin/python -m pip install -r "$DESTINATION/code/requirements.txt"
 cp "launch.sh" "update.sh" "$DESTINATION"
 if [ $UPDATE_ON_COPY = $true ]; then
+  echo "Updating"
   /bin/sh "$DESTINATION/update.sh"
 fi

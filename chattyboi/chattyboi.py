@@ -324,7 +324,7 @@ class User(QObject):
 		)
 
 	def get_data(self, extension):
-		self.extension_data.get(extension.hash, {})
+		return self.extension_data.get(extension.hash, {})
 
 	def store_data(self, extension, data):
 		all_data = self.extension_data
@@ -353,6 +353,9 @@ class Message(QObject, Generic[MessageContent]):
 	async def respond(self, *args, **kwargs):
 		await self.source.send(*args, **kwargs)
 
+	async def reply(self, *args, **kwargs):
+		await self.source.send_to(*args, **kwargs, users=[self.author])
+
 
 class Chat(QObject, Generic[MessageContent]):
 	"""
@@ -373,9 +376,11 @@ class Chat(QObject, Generic[MessageContent]):
 		self.messageReceived.emit(message)
 		return message
 
+	async def send_to(self, content: MessageContent, users: List[User]):
+		await self.send(''.join(f'@{user.name} ' for user in users) + content)
+
 	async def send(self, content: MessageContent):
-		self.new_message(Message(self, state.state.database.self_user(), content))
-		state.state.anyMessageSent.emit(content)
+		state.state.anyMessageSent.emit(str(content))
 
 
 class ApplicationState(QObject):
