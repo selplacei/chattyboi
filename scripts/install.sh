@@ -3,7 +3,7 @@ DEFAULT_DEST="$HOME/chattyboi"
 DESTINATION=$DEFAULT_DEST
 UPDATE_ON_COPY=$true
 
-if [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   echo "This script will install ChattyBoi on your system."
   echo "Usage: ${basename $0} [destination] [--no-update]"
   echo "By default, files will be copied to $DEFAULT_DEST"
