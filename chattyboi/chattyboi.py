@@ -26,9 +26,9 @@ import state
 import utils
 
 logging.basicConfig(
-	format=config.log_format,
-	datefmt=config.log_datefmt,
-	level=config.log_level
+	format=config.LOG_FORMAT,
+	datefmt=config.LOG_DATEFMT,
+	level=config.LOG_LEVEL
 )
 logger = logging.getLogger('chattyboi')
 
@@ -219,7 +219,6 @@ class DatabaseWrapper(sqlite3.Connection):
 		self.cursor().execute(
 			'INSERT INTO user_info (nicknames, created_on, extension_data) '
 			'VALUES (?, ?, ?)',
-			# TODO: generate default extension data instead of an empty dict
 			(json.dumps(nicknames), utils.utc_timestamp(), json.dumps(extension_data or {}))
 		)
 		return int(self.cursor().execute('SELECT last_insert_rowid()').fetchone()[0])
@@ -367,9 +366,10 @@ class Chat(QObject, Generic[MessageContent]):
 	def __init__(self):
 		super().__init__(None)
 		self.messages: Deque[Message[MessageContent]] = collections.deque()
+		self.name = 'Unknown'
 
 	def __str__(self):
-		return 'Unknown'
+		return self.name
 
 	def new_message(self, message: Message[MessageContent]):
 		self.messages.append(message)
@@ -430,6 +430,7 @@ class ApplicationState(QObject):
 
 	def add_chat(self, chat):
 		self.chats.append(chat)
+		self.chats.sort(key=lambda c: str(c))
 		chat.messageReceived.connect(self.anyMessageReceived)
 		self.chatAdded.emit(chat)
 
@@ -448,8 +449,8 @@ def run_default():
 	and with all available GUI elements enabled.
 	"""
 	app = QApplication(sys.argv)
-	app.setApplicationName(config.qt_app_name)
-	app.setOrganizationName(config.qt_org_name)
+	app.setApplicationName(config.QT_APP_NAME)
+	app.setOrganizationName(config.QT_ORG_NAME)
 	loop = qasync.QEventLoop(app)
 	loop.set_exception_handler(handle_exception)
 	asyncio.set_event_loop(loop)
