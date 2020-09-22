@@ -236,7 +236,7 @@ class DatabaseWrapper(sqlite3.Connection):
 		except TypeError:
 			return None
 
-	def find_or_add_user(self, nickname, extension_data: Union[str, dict] = None):
+	def find_or_add_user(self, nickname, extension_data: Union[str, dict] = None) -> User:
 		return self.find_user(nickname) or User(self, self.add_user([nickname], extension_data))
 
 

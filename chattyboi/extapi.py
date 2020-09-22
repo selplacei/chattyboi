@@ -134,3 +134,11 @@ def self_user() -> User:
 	:return: The User object associated with the bot
 	"""
 	return state().database.self_user()
+
+
+def find_user(nickname) -> Optional[User]:
+	return state().database.find_user(nickname)
+
+
+def find_or_add_user(nickname) -> User:
+	return state().database.find_or_add_user(nickname)
