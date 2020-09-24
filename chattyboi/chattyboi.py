@@ -10,7 +10,6 @@ from PySide2.QtWidgets import QApplication
 
 import config
 import gui
-import profiles
 import state
 from classes import *
 
@@ -43,7 +42,7 @@ def run_default():
 	asyncio.set_event_loop(loop)
 	
 	def profile_select_callback(path):
-		profile = profiles.Profile(path)
+		profile = Profile(path)
 		_state = state.state = ApplicationState(logger, profile)
 		profile.initialize()
 		_state.cleanup.connect(profile.cleanup)

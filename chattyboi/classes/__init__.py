@@ -3,6 +3,7 @@ from .extension import Extension
 from .extension_helper import ExtensionHelper
 from .user import User
 from .database_wrapper import DatabaseWrapper
+from .profile import Profile
 from .message import MessageContent, Message
 from .chat import Chat
 from .application_state import ApplicationState

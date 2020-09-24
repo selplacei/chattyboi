@@ -1,1 +1,1 @@
-from classes import Chat, Extension, Message, MessageContent, User
+from classes import Chat, Extension, Message, MessageContent, User, Profile
