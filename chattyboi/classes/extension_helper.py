@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import importlib.util
-import itertools
 import pathlib
 import sys
-from typing import List, Tuple
 
 import toml
 
+import config
 from . import Extension
 
 
@@ -27,6 +27,12 @@ class ExtensionHelper:
 		* initializing associated Extension objects;
 		* updating the state's extension list.
 	"""
+	@dataclasses.dataclass
+	class _UninitializedExtensionInfo:
+		path: str
+		metadata: dict
+		requires: set
+		implements: set
 	
 	@staticmethod
 	def get_metadata(fp: pathlib.Path, use_defaults=True):
@@ -37,6 +43,7 @@ class ExtensionHelper:
 			'summary': 'No summary provided.',
 			'description': 'No description provided.',
 			'requires': [],
+			'supports': [],
 			'implements': []
 		} if use_defaults else {}
 		metadata.update(toml.load(fp))
@@ -47,33 +54,6 @@ class ExtensionHelper:
 	@staticmethod
 	def get_hash(source):
 		return hashlib.md5(bytes(source, "utf-8")).hexdigest()
-	
-	@staticmethod
-	def load_order(extensions: List[Tuple[pathlib.Path, dict]]) -> List[pathlib.Path]:
-		"""
-		Use Kahn's topological sort algorithm to find an extension load order that satisfies all dependencies.
-		Assumes no duplicate implementations. A RuntimeError will be raised if there is a dependency cycle.
-		"""
-		order = []
-		graph = {path: [] for path, _ in extensions}
-		for path_u, info_u in extensions:
-			for path_v, info_v in filter(lambda e: e[0] != path_u, extensions):
-				if any(req == info_v['source'] or req in info_v['implements'] for req in info_u['requires']):
-					graph[path_u].append(path_v)
-		queue = [u for u, v in graph.items() if len(v) == 0]
-		while queue:
-			n = queue.pop()
-			order.append(n)
-			for m in (node for node, edges in graph.items() if n in edges):
-				graph[m].remove(n)
-				if len(graph[m]) == 0:
-					queue.append(m)
-		if any(edges for node, edges in graph.items()):
-			raise RuntimeError(
-				f'Encountered a dependency cycle when finding the load order. '
-				f'These extensions probably caused the error:\n{graph}'
-			)
-		return order
 	
 	def __init__(self, state):
 		self.state = state
@@ -89,23 +69,69 @@ class ExtensionHelper:
 		spec.loader.exec_module(module)
 	
 	def load_all(self):
-		# TODO: use a config variable instead of a hardcoded extension directory
-		paths = list((pathlib.Path('./extensions') / name) for name in self.state.profile.extensions)
-		metadata = [self.get_metadata(fp / 'manifest.toml') for fp in paths]
-		implementations = {md['source']: {md['source']} | set(md['implements']) for md in metadata}
+		"""
+		:raise RuntimeError: if any error is encountered, specifically: duplicate implementations if disallowed,
+			missing dependencies, and dependency cycles.
+		"""
+		extension_root = pathlib.Path(config.user_settings.get('extension root', './extensions'))
+		extension_info = [self._UninitializedExtensionInfo(
+			str(path), self.get_metadata(path), set(), set()
+		) for path in map(lambda name: extension_root / name, self.state.profile.paths)]
 		implemented = set()
-		for i in implementations.values():
-			implemented.update(i)
-		dependencies = {md['name']: set(md['requires']) for md in metadata}
-		for ext, deps in dependencies.items():
-			for dep in deps:
-				if dep not in implemented:
-					raise RuntimeError(f'Dependency [{dep}] not satisfied for extension [{ext}]')
-		for left, right in filter(lambda src: src[0] != src[1], itertools.product(implementations.keys(), repeat=2)):
-			if conflicts := implementations[left] & implementations[right]:
+		
+		# Populate extension info with what can be known immediately
+		for e in extension_info:
+			e.implements.add(e.metadata['name'])
+			e.implements.add(e.metadata['source'])
+			e.implements |= set(e.metadata['implements'])
+			if conflict := (e.implements & implemented):
+				# TODO: add a config variable to allow duplicate implementations
+				# In that case, treat all duplicates as dependencies.
+				other = next(o.metadata["name"] for o in extension_info if set(o.implements) & implemented)
 				raise RuntimeError(
-					f'Duplicate extension implementations found:'
-					f'Both [{left}] and [{right}] implement {conflicts}'
+					f'Duplicate extension implementations found:\n'
+					f'\"{e.metadata["name"]}\" ({e.path})\n'
+					f'implements {conflict}, which is already satisfied by\n'
+					f'\"{other.metadata["name"]} ({other.path})\"\n'
 				)
-		for path in self.load_order(zip(paths, metadata)):
-			self.load(path, metadata[paths.index(path)])
+			implemented |= e.implements
+			e.requires += e.metadata['requires']
+			
+		# Check that hard dependencies are satisfied and add optional ones
+		for e in extension_info:
+			if not (e.requires.issubset(implemented)):
+				raise RuntimeError(
+					f'Extension dependencies not satisfied:\n'
+					f'\"{e.metadata["name"]}\" ({e.path})\n'
+					f'requires implementations of the following:\n' +
+					'\n'.join(e.requires.difference(implemented))
+				)
+			for other in e.metadata['supports']:
+				if other in implemented:
+					e.requires += other
+		
+		# Use Kahn's topological sort algorithm to find the extension load order
+		ordered = []
+		graph = {e: [] for e in extension_info}
+		for u in extension_info:
+			for v in filter(lambda o: o is not u, extension_info):
+				if v.implements & u.requires:
+					graph[u] = v
+		queue = [u for u, v in graph.items() if len(v) == 0]
+		while queue:
+			n = queue.pop()
+			ordered.append(n)
+			for m in (node for node, edges in graph.items() if n in edges):
+				graph[m].remove(n)
+				if len(graph[m]) == 0:
+					queue.append(m)
+		if any(edges for node, edges in graph.items()):
+			raise RuntimeError(
+				f'Encountered a dependency cycle when finding the load order. '
+				f'These extensions probably caused this error:\n' +
+				'\n'.join(f'\"{e.metadata["name"]}\" ({e.path})' for e in graph)
+			)
+		
+		# Load extensions in order
+		for e in ordered:
+			self.load(e.path, e.metadata)
